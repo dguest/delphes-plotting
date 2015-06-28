@@ -16,6 +16,8 @@
 #include "TBranchElement.h"
 
 #include <iostream>
+#include <sstream>
+#include <stdexcept>
 
 using namespace std;
 
@@ -110,7 +112,9 @@ TClonesArray *ExRootTreeReader::UseBranch(const char *branchName)
 
   if(!array)
   {
-    cout << "** WARNING: cannot access branch '" << branchName << "', return NULL pointer" << endl;
+    stringstream str;
+    str << "** WARNING: cannot access branch '" << branchName << "', quit";
+    throw std::runtime_error(str.str());
   }
 
   return array;

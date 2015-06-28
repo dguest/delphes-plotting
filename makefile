@@ -55,7 +55,7 @@ CXXFLAGS     := -O2 -Wall -fPIC -I$(INC) -I$(ND_HIST_INC) -g -std=c++11
 CXXFLAGS     += $(CXXFLAG_HACKS)
 CXXFLAGS     += -I$(DELPHES) -I$(DELPHES)/external
 # LIBS         := -L$(ND_HIST_LIB) -Wl,-rpath,$(ND_HIST_LIB) -lndhist
-LIBS         := $(shell ndhist-config --ldflags)
+LIBS         := $(shell ndhist-config --libs)
 CXXFLAGS     += $(shell ndhist-config --cflags)
 
 LDFLAGS      := #-Wl,--no-undefined
@@ -73,7 +73,7 @@ LDFLAGS      += $(ROOTLDFLAGS)
 LIBS         += $(ROOTLIBS)
 
 # ---- define objects
-GEN_OBJ     := ExRootTreeReader.o
+GEN_OBJ     := ExRootTreeReader.o misc_func.o
 TOP_OBJ     += tag-perf-delphes.o
 
 # stuff used for the c++ executable

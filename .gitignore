@@ -1,0 +1,6 @@
+*.root
+*.h5
+/build/
+/bin/
+/dict/
+/delphes

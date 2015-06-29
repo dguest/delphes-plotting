@@ -2,6 +2,7 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <cmath>
 
 #include "TROOT.h"
 #include "TSystem.h"
@@ -18,26 +19,46 @@
 #include "Histogram.hh"
 
 const unsigned MAX_TRACKS = 200;
+const double GeV = 1;
+const double MeV = 0.001;
 
 struct Hists {
   Hists();
   void save(std::string);
   Histogram n_tracks;
+  Histogram track_pt;
   Histogram track_d0;
   Histogram particle_d0;
+  Histogram track_z0;
+  Histogram particle_z0;
+  Histogram track_d0sig;
+  Histogram track_z0sig;
 };
 Hists::Hists():
   n_tracks(MAX_TRACKS, -0.5, MAX_TRACKS + 0.5),
-  track_d0(100, -0.25, 0.25),
-  particle_d0(100, -0.25, 0.25)
+  track_pt(200, 0, 200, "GeV"),
+  track_d0(100, -0.25, 0.25, "mm"),
+  particle_d0(100, -0.25, 0.25, "mm"),
+  track_z0(100, -3, 3, "mm"),
+  particle_z0(100, -10, 10, "mm"),
+  track_d0sig(100, -10, 10),
+  track_z0sig(100, -10, 10)
 {
 }
 void Hists::save(std::string output) {
   H5::H5File out_file(output, H5F_ACC_EXCL);
-  n_tracks.write_to(out_file, "n_tracks");
-  track_d0.write_to(out_file, "track_d0");
-  particle_d0.write_to(out_file, "particle_d0");
+#define WRITE(VAR) VAR.write_to(out_file, #VAR)
+  WRITE(n_tracks);
+  WRITE(track_pt);
+  WRITE(track_d0);
+  WRITE(particle_d0);
+  WRITE(track_z0);
+  WRITE(particle_z0);
+  WRITE(track_d0sig);
+  WRITE(track_z0sig);
+#undef WRITE
 }
+
 
 int main(int argc, char *argv[])
 {
@@ -72,13 +93,30 @@ int main(int argc, char *argv[])
     int n_tracks = bTrack->GetEntries();
     hists.n_tracks.fill(n_tracks);
     for (int i_track = 0; i_track < n_tracks; i_track++) {
-
       Track* track = (Track*) bTrack->At(i_track);
+
+      if (track->PT < 1*GeV) continue;
+
+      hists.track_pt.fill(track->PT);
       float d0 = track->trkPar[TrackParam::D0];
       hists.track_d0.fill(d0);
-      Track* particle = (Track*) track->Particle.GetObject();
-      float d0_particle = particle->trkPar[TrackParam::D0];
-      hists.particle_d0.fill(d0_particle);
+      float z0 = track->trkPar[TrackParam::Z0];
+      hists.track_z0.fill(z0);
+      {
+	Track* particle = (Track*) track->Particle.GetObject();
+	float d0_particle = particle->trkPar[TrackParam::D0];
+	hists.particle_d0.fill(d0_particle);
+	float z0_particle = particle->trkPar[TrackParam::Z0];
+	hists.particle_z0.fill(z0_particle);
+      }
+      {
+	float d0sig = d0 / std::sqrt(track->trkCov[TrackParam::D0D0]);
+	hists.track_d0sig.fill(d0sig);
+      }
+      {
+	float z0sig = z0 / std::sqrt(track->trkCov[TrackParam::Z0Z0]);
+	hists.track_z0sig.fill(z0sig);
+      }
     }
 
   }

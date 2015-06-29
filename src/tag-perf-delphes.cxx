@@ -34,13 +34,17 @@ struct Hists {
   Histogram track_d0sig;
   Histogram track_z0sig;
 };
+
+const float D0RNG = 0.1;
+const float Z0RNG = 0.1;
+
 Hists::Hists():
   n_tracks(MAX_TRACKS, -0.5, MAX_TRACKS + 0.5),
   track_pt(200, 0, 200, "GeV"),
-  track_d0(100, -0.25, 0.25, "mm"),
-  particle_d0(100, -0.25, 0.25, "mm"),
-  track_z0(100, -3, 3, "mm"),
-  particle_z0(100, -10, 10, "mm"),
+  track_d0(100, -D0RNG, D0RNG, "mm"),
+  particle_d0(100, -D0RNG, D0RNG, "mm"),
+  track_z0(100, -Z0RNG, Z0RNG, "mm"),
+  particle_z0(100, -Z0RNG, Z0RNG, "mm"),
   track_d0sig(100, -10, 10),
   track_z0sig(100, -10, 10)
 {

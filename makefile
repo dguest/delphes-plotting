@@ -99,7 +99,7 @@ $(OUTPUT)/tag-perf-%: $(GEN_OBJ_PATHS) $(BUILD)/tag-perf-%.o
 $(BUILD)/%.o: %.cxx
 	@echo compiling $<
 	@mkdir -p $(BUILD)
-	$(CXX) -c $(CXXFLAGS) $< -o $@
+	@$(CXX) -c $(CXXFLAGS) $< -o $@
 
 # use auto dependency generation
 ALLOBJ       := $(GEN_OBJ)

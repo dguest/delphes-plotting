@@ -101,8 +101,6 @@ int main(int argc, char *argv[])
       Track* track = (Track*) bTrack->At(i_track);
 
       if (track->PT < 1*GeV) continue;
-      if (std::abs(track->PID) != 5) continue;
-      std::cout << "found b" << std::endl;
 
       hists.track_pt.fill(track->PT);
       float d0 = track->trkPar[TrackParam::D0];

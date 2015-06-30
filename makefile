@@ -15,6 +15,7 @@ LIB_DELPHES := $(DELPHES)/libDelphes.so
 ifeq (,$(wildcard $(LIB_DELPHES) ))
 $(error "couldn't find '$(DELPHES)' folder, make sure you've linked it")
 endif
+DELPHES_ABSOLUTE := $(abspath $(DELPHES))
 
 # --- HACKS ----
 CXXFLAG_HACKS := -Wno-literal-suffix #hdf5 header sets this off
@@ -62,14 +63,15 @@ LDFLAGS      := #-Wl,--no-undefined
 
 CXXFLAGS     += -I$(HDF_PATH)/include
 LIBS         += -L$(HDF_PATH)/lib -Wl,-rpath,$(HDF_PATH)/lib
-LIBS         += -L$(DELPHES) -Wl,-rpath,$(DELPHES)
+LIBS         += -L$(DELPHES_ABSOLUTE) -Wl,-rpath,$(DELPHES_ABSOLUTE)
+CXXFLAGS     += -DDELPHESDIR=\"$(DELPHES_ABSOLUTE)\"
 
 # --- HDF5 needed for hist saving
 LIBS         += -lhdf5_cpp -lhdf5
 
 # --- rootstuff
 CXXFLAGS     += $(ROOTCFLAGS)
-LDFLAGS      += $(ROOTLDFLAGS)
+LDFLAGS      += $(ROOTLDFLAGS) -Wl,--no-as-needed
 LIBS         += $(ROOTLIBS)
 
 # ---- define objects
@@ -97,7 +99,7 @@ $(OUTPUT)/tag-perf-%: $(GEN_OBJ_PATHS) $(BUILD)/tag-perf-%.o
 $(BUILD)/%.o: %.cxx
 	@echo compiling $<
 	@mkdir -p $(BUILD)
-	@$(CXX) -c $(CXXFLAGS) $< -o $@
+	$(CXX) -c $(CXXFLAGS) $< -o $@
 
 # use auto dependency generation
 ALLOBJ       := $(GEN_OBJ)
@@ -121,7 +123,6 @@ CLEANLIST     = *~ *.o *.o~ *.d core
 clean:
 	rm -fr $(CLEANLIST) $(CLEANLIST:%=$(BUILD)/%) $(CLEANLIST:%=$(DEP)/%)
 	rm -fr $(BUILD) $(DICT)
-	@$(MAKE) -C $(ND_HIST_DIR) clean
 
 rmdep:
 	rm -f $(DEP)/*.d

@@ -67,7 +67,8 @@ void Hists::save(std::string output) {
 int main(int argc, char *argv[])
 {
   gROOT->SetBatch();
-  gSystem->Load("delphes/libDelphes");
+  // absolute path to delphes has to be passed in as a macro DELPHESDIR
+  gSystem->Load(DELPHESDIR "/libDelphes");
   std::string out_name("test.h5");
   if (exists(out_name) ) {
     std::cerr << out_name << " exists, exiting" << std::endl;
@@ -100,6 +101,8 @@ int main(int argc, char *argv[])
       Track* track = (Track*) bTrack->At(i_track);
 
       if (track->PT < 1*GeV) continue;
+      if (std::abs(track->PID) != 5) continue;
+      std::cout << "found b" << std::endl;
 
       hists.track_pt.fill(track->PT);
       float d0 = track->trkPar[TrackParam::D0];

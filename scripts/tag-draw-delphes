@@ -16,7 +16,8 @@ def run():
     _make_plot(pt_plots, 'track_pt.pdf', _pt, log=True)
     z0_plots = [('raw',h5f['particle_z0']), ('smeared', h5f['track_z0'])]
     _make_plot(z0_plots, 'z0_comp.pdf', 'z0')
-
+    _make_plot([('tracks per jet', h5f['n_tracks'])], 'n_tracks.pdf', 'n trk')
+    _make_plot([('d0 sig', h5f['track_d0sig'])], 'd0sig.pdf', 'd0 sig')
 
 _pt = r'$p_{\rm T}$'
 _ax_size = 12

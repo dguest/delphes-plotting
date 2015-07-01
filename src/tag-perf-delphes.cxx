@@ -53,8 +53,8 @@ Hists::Hists():
   particle_d0(100, -D0RNG, D0RNG, "mm"),
   track_z0(100, -Z0RNG, Z0RNG, "mm"),
   particle_z0(100, -Z0RNG, Z0RNG, "mm"),
-  track_d0sig(100, -10, 10),
-  track_z0sig(100, -10, 10)
+  track_d0sig(100, -10, 10, ""),
+  track_z0sig(100, -10, 10, "")
 {
 }
 void Hists::save(std::string output) {
@@ -118,6 +118,7 @@ int main(int argc, char *argv[])
 	TObject* obj = jet->Constituents.At(iii);
 	if (obj == 0) continue;
 	if (! (obj->IsA() == Track::Class()) ) continue;
+	// TODO: add b-tagging check here
 	n_tracks++;
 	Track* track = (Track*) obj;
 	hists.track_pt.fill(track->PT);
@@ -128,16 +129,19 @@ int main(int argc, char *argv[])
 	{
 	  Track* particle = (Track*) track->Particle.GetObject();
 	  float d0_particle = particle->trkPar[TrackParam::D0];
+	  // printf("d0 %f\n", d0_particle);
 	  hists.particle_d0.fill(d0_particle);
 	  float z0_particle = particle->trkPar[TrackParam::Z0];
 	  hists.particle_z0.fill(z0_particle);
 	}
-	{
-	  float d0sig = d0 / std::sqrt(track->trkCov[TrackParam::D0D0]);
+	float d0_cov = track->trkCov[TrackParam::D0D0];
+	if (d0_cov > 0) {
+	  float d0sig = d0 / std::sqrt(d0_cov);
 	  hists.track_d0sig.fill(d0sig);
 	}
-	{
-	  float z0sig = z0 / std::sqrt(track->trkCov[TrackParam::Z0Z0]);
+	float z0_cov = track->trkCov[TrackParam::Z0Z0];
+	if (z0_cov > 0) {
+	  float z0sig = z0 / std::sqrt(z0_cov);
 	  hists.track_z0sig.fill(z0sig);
 	}
       }	// end loop over jet tracks

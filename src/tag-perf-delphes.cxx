@@ -18,14 +18,19 @@
 #include "H5Cpp.h"
 #include "Histogram.hh"
 
-const unsigned MAX_TRACKS = 200;
 const double GeV = 1;
 const double MeV = 0.001;
+
+// b-tagging bits
+const unsigned BTAG = 1 << 0;
+const unsigned B_FLAVOR = 1 << 1;
+
 
 struct Hists {
   Hists();
   void save(std::string);
   Histogram n_tracks;
+  Histogram n_jets;
   Histogram track_pt;
   Histogram track_d0;
   Histogram particle_d0;
@@ -35,11 +40,14 @@ struct Hists {
   Histogram track_z0sig;
 };
 
+const unsigned MAX_TRACKS = 200;
+const unsigned MAX_JETS = 20;
 const float D0RNG = 0.1;
 const float Z0RNG = 0.1;
 
 Hists::Hists():
   n_tracks(MAX_TRACKS, -0.5, MAX_TRACKS + 0.5),
+  n_jets(MAX_JETS, -0.5, MAX_JETS + 0.5),
   track_pt(200, 0, 200, "GeV"),
   track_d0(100, -D0RNG, D0RNG, "mm"),
   particle_d0(100, -D0RNG, D0RNG, "mm"),
@@ -53,6 +61,7 @@ void Hists::save(std::string output) {
   H5::H5File out_file(output, H5F_ACC_EXCL);
 #define WRITE(VAR) VAR.write_to(out_file, #VAR)
   WRITE(n_tracks);
+  WRITE(n_jets);
   WRITE(track_pt);
   WRITE(track_d0);
   WRITE(particle_d0);
@@ -86,6 +95,7 @@ int main(int argc, char *argv[])
   // Get pointers to branches used in this analysis
   TClonesArray* bTrack = treeReader->UseBranch("Track");
   TClonesArray* bOriginalTrack = treeReader->UseBranch("OriginalTrack");
+  TClonesArray* bJets = treeReader->UseBranch("Jet");
 
   Hists hists;
 
@@ -95,36 +105,46 @@ int main(int argc, char *argv[])
     // Load selected branches with data from specified event
     treeReader->ReadEntry(entry);
 
-    int n_tracks = bTrack->GetEntries();
-    hists.n_tracks.fill(n_tracks);
-    for (int i_track = 0; i_track < n_tracks; i_track++) {
-      Track* track = (Track*) bTrack->At(i_track);
+    int n_jets = bJet->GetEntries();
+    hists.n_jets = bJets->GetEntries();
 
-      if (track->PT < 1*GeV) continue;
+    // loop over jets
+    for (int i_jet = 0; i_jet < n_jets; i_jet++) {
+      Jet* jet = (Jet*) bJet->At(i_jet);
+      int n_constituents = jet->Constituents.GetEntriesFast();
 
-      hists.track_pt.fill(track->PT);
-      float d0 = track->trkPar[TrackParam::D0];
-      hists.track_d0.fill(d0);
-      float z0 = track->trkPar[TrackParam::Z0];
-      hists.track_z0.fill(z0);
-      {
-	Track* particle = (Track*) track->Particle.GetObject();
-	float d0_particle = particle->trkPar[TrackParam::D0];
-	hists.particle_d0.fill(d0_particle);
-	float z0_particle = particle->trkPar[TrackParam::Z0];
-	hists.particle_z0.fill(z0_particle);
-      }
-      {
-	float d0sig = d0 / std::sqrt(track->trkCov[TrackParam::D0D0]);
-	hists.track_d0sig.fill(d0sig);
-      }
-      {
-	float z0sig = z0 / std::sqrt(track->trkCov[TrackParam::Z0Z0]);
-	hists.track_z0sig.fill(z0sig);
-      }
-    }
-
-  }
+      // loop over all the tracks
+      int n_tracks = 0;
+      for (int iii = 0; iii < n_constituents; iii++) {
+	TObject* obj = jet->Constituents.At(iii);
+	if (obj == 0) continue;
+	if (! (object->IsA() == Track::Class()) ) continue;
+	n_tracks++;
+	Track* track = (Track*) obj;
+	hists.track_pt.fill(track->PT);
+	float d0 = track->trkPar[TrackParam::D0];
+	hists.track_d0.fill(d0);
+	float z0 = track->trkPar[TrackParam::Z0];
+	hists.track_z0.fill(z0);
+	{
+	  Track* particle = (Track*) track->Particle.GetObject();
+	  float d0_particle = particle->trkPar[TrackParam::D0];
+	  hists.particle_d0.fill(d0_particle);
+	  float z0_particle = particle->trkPar[TrackParam::Z0];
+	  hists.particle_z0.fill(z0_particle);
+	}
+	{
+	  float d0sig = d0 / std::sqrt(track->trkCov[TrackParam::D0D0]);
+	  hists.track_d0sig.fill(d0sig);
+	}
+	{
+	  float z0sig = z0 / std::sqrt(track->trkCov[TrackParam::Z0Z0]);
+	  hists.track_z0sig.fill(z0sig);
+	}
+      }	// end loop over jet tracks
+      hists.n_tracks.fill(n_tracks);
+    } // end loop over jets
+  }   // end loop over events
   hists.save(out_name);
   return 0;
 

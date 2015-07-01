@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 {
   gROOT->SetBatch();
   // absolute path to delphes has to be passed in as a macro DELPHESDIR
-  gSystem->Load(DELPHESDIR "/libDelphes");
+  // gSystem->Load(DELPHESDIR "/libDelphes");
   std::string out_name("test.h5");
   if (exists(out_name) ) {
     std::cerr << out_name << " exists, exiting" << std::endl;
@@ -93,8 +93,8 @@ int main(int argc, char *argv[])
   long long int numberOfEntries = treeReader->GetEntries();
 
   // Get pointers to branches used in this analysis
-  TClonesArray* bTrack = treeReader->UseBranch("Track");
-  TClonesArray* bOriginalTrack = treeReader->UseBranch("OriginalTrack");
+  treeReader->UseBranch("Track");
+  treeReader->UseBranch("OriginalTrack");
   TClonesArray* bJets = treeReader->UseBranch("Jet");
 
   Hists hists;
@@ -105,12 +105,12 @@ int main(int argc, char *argv[])
     // Load selected branches with data from specified event
     treeReader->ReadEntry(entry);
 
-    int n_jets = bJet->GetEntries();
-    hists.n_jets = bJets->GetEntries();
+    int n_jets = bJets->GetEntries();
+    hists.n_jets.fill(n_jets);
 
     // loop over jets
     for (int i_jet = 0; i_jet < n_jets; i_jet++) {
-      Jet* jet = (Jet*) bJet->At(i_jet);
+      Jet* jet = (Jet*) bJets->At(i_jet);
       int n_constituents = jet->Constituents.GetEntriesFast();
 
       // loop over all the tracks
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
       for (int iii = 0; iii < n_constituents; iii++) {
 	TObject* obj = jet->Constituents.At(iii);
 	if (obj == 0) continue;
-	if (! (object->IsA() == Track::Class()) ) continue;
+	if (! (obj->IsA() == Track::Class()) ) continue;
 	n_tracks++;
 	Track* track = (Track*) obj;
 	hists.track_pt.fill(track->PT);

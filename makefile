@@ -64,14 +64,14 @@ LDFLAGS      := #-Wl,--no-undefined
 CXXFLAGS     += -I$(HDF_PATH)/include
 LIBS         += -L$(HDF_PATH)/lib -Wl,-rpath,$(HDF_PATH)/lib
 LIBS         += -L$(DELPHES_ABSOLUTE) -Wl,-rpath,$(DELPHES_ABSOLUTE)
-CXXFLAGS     += -DDELPHESDIR=\"$(DELPHES_ABSOLUTE)\"
+LIBS         += -ldelphes
 
 # --- HDF5 needed for hist saving
 LIBS         += -lhdf5_cpp -lhdf5
 
 # --- rootstuff
 CXXFLAGS     += $(ROOTCFLAGS)
-LDFLAGS      += $(ROOTLDFLAGS) -Wl,--no-as-needed
+LDFLAGS      += $(ROOTLDFLAGS)
 LIBS         += $(ROOTLIBS)
 
 # ---- define objects

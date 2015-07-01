@@ -76,8 +76,6 @@ void Hists::save(std::string output) {
 int main(int argc, char *argv[])
 {
   gROOT->SetBatch();
-  // absolute path to delphes has to be passed in as a macro DELPHESDIR
-  // gSystem->Load(DELPHESDIR "/libDelphes");
   std::string out_name("test.h5");
   if (exists(out_name) ) {
     std::cerr << out_name << " exists, exiting" << std::endl;
@@ -94,6 +92,7 @@ int main(int argc, char *argv[])
 
   // Get pointers to branches used in this analysis
   treeReader->UseBranch("Track");
+  treeReader->UseBranch("Particle");
   treeReader->UseBranch("OriginalTrack");
   TClonesArray* bJets = treeReader->UseBranch("Jet");
 
@@ -143,6 +142,7 @@ int main(int argc, char *argv[])
 	}
       }	// end loop over jet tracks
       hists.n_tracks.fill(n_tracks);
+
     } // end loop over jets
   }   // end loop over events
   hists.save(out_name);

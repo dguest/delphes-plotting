@@ -10,21 +10,29 @@ from matplotlib.figure import Figure
 
 def run():
     h5f = h5py.File(sys.argv[1])
-    d0_plots = [('raw',h5f['particle_d0']), ('smeared',h5f['track_d0'])]
+    all_jets = h5f['all_jets']
+    b_jets = h5f['b_jets']
+    d0_plots = [('raw',all_jets['particle_d0']), ('smeared',all_jets['track_d0'])]
     _make_plot(d0_plots, 'd0_comp.pdf', 'd0')
-    pt_plots = [(_pt, h5f['track_pt'])]
+    pt_plots = [(_pt, all_jets['track_pt'])]
     _make_plot(pt_plots, 'track_pt.pdf', _pt, log=True)
-    z0_plots = [('raw',h5f['particle_z0']), ('smeared', h5f['track_z0'])]
+    z0_plots = [('raw',all_jets['particle_z0']), ('smeared', all_jets['track_z0'])]
     _make_plot(z0_plots, 'z0_comp.pdf', 'z0')
-    _make_plot([('tracks per jet', h5f['n_tracks'])], 'n_tracks.pdf', 'n trk')
-    _make_plot([('d0 sig', h5f['track_d0sig'])], 'd0sig.pdf', 'd0 sig')
+    _make_plot([('tracks per jet', all_jets['n_tracks'])], 'n_tracks.pdf', 'n trk')
+    _make_plot([('d0 sig', all_jets['track_d0sig'])], 'd0sig.pdf', 'd0 sig')
+    _make_plot([
+        ('ip sig b', b_jets['track_ipsig']),
+        ('ip sig all', all_jets['track_ipsig'])],
+               'ipsig_bvsall.pdf', 'ip sig', norm=True)
 
 _pt = r'$p_{\rm T}$'
 _ax_size = 12
 _text_size = 12
 
-def _make_plot(names, outname, xname, log=False):
+def _make_plot(names, outname, xname, log=False, outdir='plots', norm=False):
     """return the canvas with everything drawn on it"""
+    y_lab = 'tracks'
+
     fig = Figure(figsize=(5.0, 5.0*3/4))
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(1,1,1)
@@ -35,20 +43,24 @@ def _make_plot(names, outname, xname, log=False):
         yvals = np.array(dataset)[1:]
         xvals = np.linspace(*extent, num=(yvals.shape[0]))
         color = next(color_itr)
-        # print(xvals.shape, yvals.shape)
+        if norm:
+            yvals /= yvals.sum()
+            y_lab = 'arb'
         ax.plot(xvals, yvals, drawstyle='steps-post', label=leg, color=color)
         units.add(dataset.attrs['units'][0])
     assert len(units) == 1, "incompatible units: {}".format(units)
 
     xlab = '{} [{}]'.format(xname, units.pop())
     ax.set_xlabel(xlab, x=0.98, ha='right', size=_ax_size)
-    ax.set_ylabel('tracks', y=0.98, ha='right', size=_ax_size)
+    ax.set_ylabel(y_lab, y=0.98, ha='right', size=_ax_size)
     ax.set_xlim(*extent)
     if log:
         ax.set_ylim(1, ax.get_ylim()[1])
         ax.set_yscale('log')
     ax.legend(framealpha=0, prop=dict(size=_text_size))
-    canvas.print_figure(outname, bbox_inches='tight')
+    if not os.path.isdir(outdir):
+        os.mkdir(outdir)
+    canvas.print_figure(os.path.join(outdir,outname), bbox_inches='tight')
 
 if __name__ == '__main__':
     run()

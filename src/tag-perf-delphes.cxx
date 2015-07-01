@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <cassert>
 
 #include "TROOT.h"
 #include "TSystem.h"
@@ -22,13 +23,15 @@ const double GeV = 1;
 const double MeV = 0.001;
 
 // b-tagging bits
-const unsigned BTAG = 1 << 0;
-const unsigned B_FLAVOR = 1 << 1;
-
+namespace bit {
+  const unsigned BTAG = 1 << 0;
+  const unsigned B_FLAVOR = 1 << 1;
+}
 
 struct Hists {
   Hists();
   void save(std::string);
+  void save(H5::CommonFG&);
   Histogram n_tracks;
   Histogram n_jets;
   Histogram track_pt;
@@ -38,6 +41,7 @@ struct Hists {
   Histogram particle_z0;
   Histogram track_d0sig;
   Histogram track_z0sig;
+  Histogram track_ipsig;
 };
 
 const unsigned MAX_TRACKS = 200;
@@ -54,12 +58,16 @@ Hists::Hists():
   track_z0(100, -Z0RNG, Z0RNG, "mm"),
   particle_z0(100, -Z0RNG, Z0RNG, "mm"),
   track_d0sig(100, -10, 10, ""),
-  track_z0sig(100, -10, 10, "")
+  track_z0sig(100, -10, 10, ""),
+  track_ipsig(100, -10, 10, "")
 {
 }
 void Hists::save(std::string output) {
   H5::H5File out_file(output, H5F_ACC_EXCL);
-#define WRITE(VAR) VAR.write_to(out_file, #VAR)
+  save(out_file);
+}
+void Hists::save(H5::CommonFG& out_h5) {
+#define WRITE(VAR) VAR.write_to(out_h5, #VAR)
   WRITE(n_tracks);
   WRITE(n_jets);
   WRITE(track_pt);
@@ -69,9 +77,61 @@ void Hists::save(std::string output) {
   WRITE(particle_z0);
   WRITE(track_d0sig);
   WRITE(track_z0sig);
+  WRITE(track_ipsig);
 #undef WRITE
 }
 
+void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
+  hists.track_pt.fill(track->PT);
+
+  // took this form the TrackCountingBTagging module
+  // track perigees
+  float xd = track->Xd;
+  float yd = track->Yd;
+  float d0 = track->trkPar[TrackParam::D0];
+  // these should be set equal by delphes
+  // if (std::abs(d0 - track->Dxy) > 0.0001){
+  //   printf("d0: %f, Dxy: %f\n", d0, track->Dxy);
+  // }
+
+  // jet momentum
+  TLorentzVector jvec;
+  jvec.SetPtEtaPhiM(jet->PT, jet->Eta, jet->Phi, jet->Mass);
+  float jpx = jvec.Px();
+  float jpy = jvec.Py();
+
+  // signed impact parameter along jet axis
+  int sign = (jpx*xd + jpy*yd > 0.0) ? 1 : -1;
+  float ip = sign*d0;
+
+
+  hists.track_d0.fill(d0);
+  float z0 = track->trkPar[TrackParam::Z0];
+  hists.track_z0.fill(z0);
+  {
+    Track* particle = (Track*) track->Particle.GetObject();
+    float d0_particle = particle->trkPar[TrackParam::D0];
+    // printf("d0 %f\n", d0_particle);
+    hists.particle_d0.fill(d0_particle);
+    float z0_particle = particle->trkPar[TrackParam::Z0];
+    hists.particle_z0.fill(z0_particle);
+  }
+  float d0_cov = track->trkCov[TrackParam::D0D0];
+  if (d0_cov > 0) {
+    float d0sig = d0 / std::sqrt(d0_cov);
+    hists.track_d0sig.fill(d0sig);
+    float ipsig = ip / std::sqrt(d0_cov);
+    hists.track_ipsig.fill(ipsig);
+  }
+  float z0_cov = track->trkCov[TrackParam::Z0Z0];
+  if (z0_cov > 0) {
+    float z0sig = z0 / std::sqrt(z0_cov);
+    hists.track_z0sig.fill(z0sig);
+  }
+}
+
+// ____________________________________________________
+// main function
 
 int main(int argc, char *argv[])
 {
@@ -97,6 +157,7 @@ int main(int argc, char *argv[])
   TClonesArray* bJets = treeReader->UseBranch("Jet");
 
   Hists hists;
+  Hists b_jet_hists;
 
   // Loop over all events
   for(Int_t entry = 0; entry < numberOfEntries; ++entry)
@@ -121,35 +182,20 @@ int main(int argc, char *argv[])
 	// TODO: add b-tagging check here
 	n_tracks++;
 	Track* track = (Track*) obj;
-	hists.track_pt.fill(track->PT);
-	float d0 = track->trkPar[TrackParam::D0];
-	hists.track_d0.fill(d0);
-	float z0 = track->trkPar[TrackParam::Z0];
-	hists.track_z0.fill(z0);
-	{
-	  Track* particle = (Track*) track->Particle.GetObject();
-	  float d0_particle = particle->trkPar[TrackParam::D0];
-	  // printf("d0 %f\n", d0_particle);
-	  hists.particle_d0.fill(d0_particle);
-	  float z0_particle = particle->trkPar[TrackParam::Z0];
-	  hists.particle_z0.fill(z0_particle);
-	}
-	float d0_cov = track->trkCov[TrackParam::D0D0];
-	if (d0_cov > 0) {
-	  float d0sig = d0 / std::sqrt(d0_cov);
-	  hists.track_d0sig.fill(d0sig);
-	}
-	float z0_cov = track->trkCov[TrackParam::Z0Z0];
-	if (z0_cov > 0) {
-	  float z0sig = z0 / std::sqrt(z0_cov);
-	  hists.track_z0sig.fill(z0sig);
+	fill_track_hists(hists, track, jet);
+	if (jet->BTag & bit::B_FLAVOR) {
+	  fill_track_hists(b_jet_hists, track, jet);
 	}
       }	// end loop over jet tracks
       hists.n_tracks.fill(n_tracks);
 
     } // end loop over jets
   }   // end loop over events
-  hists.save(out_name);
+  H5::H5File out_file(out_name, H5F_ACC_EXCL);
+  H5::Group all_jet_group(out_file.createGroup("all_jets"));
+  hists.save(all_jet_group);
+  H5::Group b_jet_group(out_file.createGroup("b_jets"));
+  b_jet_hists.save(b_jet_group);
   return 0;
 
 }

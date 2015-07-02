@@ -15,6 +15,7 @@
 
 #include "ExRootTreeReader.h"
 #include "misc_func.hh"
+#include "root.hh"
 
 #include "H5Cpp.h"
 #include "Histogram.hh"
@@ -208,16 +209,10 @@ int main(int argc, char *argv[])
 	  printf("null object\n");
 	  continue;
 	}
-	if (! (obj->IsA() == Tower::Class()) ) {
-	  printf("non-tower! %s\n", obj->IsA()->GetName());
-	}
-	if (! (obj->IsA() == Track::Class()) ) {
-	  // printf("non-track! %s\n", obj->IsA()->GetName());
-	  continue;
-	}
-	// TODO: add b-tagging check here
+	if (!root::is_class<Track>(*obj)) continue;
+	auto* track = root::as_a<Track>(obj);
 	n_tracks++;
-	Track* track = (Track*) obj;
+	// Track* track = (Track*) obj;
 	fill_track_hists(hists, track, jet);
 	if (jet->BTag & bit::B_FLAVOR) {
 	  fill_track_hists(b_jet_hists, track, jet);

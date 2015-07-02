@@ -18,7 +18,7 @@ endif
 DELPHES_ABSOLUTE := $(abspath $(DELPHES))
 
 # --- HACKS ----
-CXXFLAG_HACKS := -Wno-literal-suffix #hdf5 header sets this off
+# CXXFLAG_HACKS := -Wno-literal-suffix #hdf5 header sets this off
 
 #  set search path
 vpath %.cxx  $(SRC)

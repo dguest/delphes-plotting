@@ -170,6 +170,16 @@ int main(int argc, char *argv[])
   treeReader->UseBranch("Track");
   treeReader->UseBranch("Particle");
   treeReader->UseBranch("OriginalTrack");
+  treeReader->UseBranch("Electron");
+  treeReader->UseBranch("Photon");
+  treeReader->UseBranch("Muon");
+
+  // TODO: figure out why this makes all my tracks go away!
+  treeReader->UseBranch("Tower");
+
+  treeReader->UseBranch("EFlowTrack");
+  treeReader->UseBranch("EFlowPhoton");
+  treeReader->UseBranch("EFlowNeutralHadron");
   TClonesArray* bJets = treeReader->UseBranch("Jet");
 
   Hists hists;
@@ -194,8 +204,17 @@ int main(int argc, char *argv[])
       int n_tracks = 0;
       for (int iii = 0; iii < n_constituents; iii++) {
 	TObject* obj = jet->Constituents.At(iii);
-	if (obj == 0) continue;
-	if (! (obj->IsA() == Track::Class()) ) continue;
+	if (obj == 0){
+	  printf("null object\n");
+	  continue;
+	}
+	if (! (obj->IsA() == Tower::Class()) ) {
+	  printf("non-tower! %s\n", obj->IsA()->GetName());
+	}
+	if (! (obj->IsA() == Track::Class()) ) {
+	  // printf("non-track! %s\n", obj->IsA()->GetName());
+	  continue;
+	}
 	// TODO: add b-tagging check here
 	n_tracks++;
 	Track* track = (Track*) obj;

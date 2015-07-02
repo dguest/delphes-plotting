@@ -61,9 +61,9 @@ Hists::Hists():
   particle_ip(100, -D0RNG, D0RNG, "mm"),
   track_z0(100, -Z0RNG, Z0RNG, "mm"),
   particle_z0(100, -Z0RNG, Z0RNG, "mm"),
-  track_d0sig(100, -10, 10, ""),
-  track_z0sig(100, -10, 10, ""),
-  track_ipsig(100, -10, 10, "")
+  track_d0sig(1000, -30, 30, ""),
+  track_z0sig(1000, -30, 30, ""),
+  track_ipsig(1000, -30, 30, "")
 {
 }
 void Hists::save(std::string output) {
@@ -117,9 +117,9 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
   double ip = get_ip(track, jet);
   hists.track_ip.fill(ip);
   double particle_ip = get_ip(particle, jet);
-  if (std::abs(particle_ip) > 1e-5) {
-    hists.particle_ip.fill(get_ip(particle, jet));
-  }
+  // if (std::abs(particle_ip) > 1e-5) {
+  hists.particle_ip.fill(get_ip(particle, jet));
+  // }
 
   float d0 = track->trkPar[TrackParam::D0];
   hists.track_d0.fill(d0);
@@ -174,6 +174,7 @@ int main(int argc, char *argv[])
 
   Hists hists;
   Hists b_jet_hists;
+  Hists light_jet_hists;
 
   // Loop over all events
   for(Int_t entry = 0; entry < numberOfEntries; ++entry)
@@ -201,6 +202,8 @@ int main(int argc, char *argv[])
 	fill_track_hists(hists, track, jet);
 	if (jet->BTag & bit::B_FLAVOR) {
 	  fill_track_hists(b_jet_hists, track, jet);
+	} else {
+	  fill_track_hists(light_jet_hists, track, jet);
 	}
       }	// end loop over jet tracks
       hists.n_tracks.fill(n_tracks);
@@ -212,6 +215,8 @@ int main(int argc, char *argv[])
   hists.save(all_jet_group);
   H5::Group b_jet_group(out_file.createGroup("b_jets"));
   b_jet_hists.save(b_jet_group);
+  H5::Group light_jet_group(out_file.createGroup("light_jets"));
+  light_jet_hists.save(light_jet_group);
   return 0;
 
 }

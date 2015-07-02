@@ -12,26 +12,27 @@ def run():
     h5f = h5py.File(sys.argv[1])
     all_jets = h5f['all_jets']
     b_jets = h5f['b_jets']
-    d0_plots = [('raw',all_jets['particle_d0']), ('smeared',all_jets['track_d0'])]
-    _make_plot(d0_plots, 'd0_comp.pdf', 'd0')
-    pt_plots = [(_pt, all_jets['track_pt'])]
+    light_jets = h5f['light_jets']
+    # d0_plots = [('raw',all_jets['particle_d0']), ('smeared',all_jets['track_d0'])]
+    # _make_plot(d0_plots, 'd0_comp.pdf', 'd0')
+    pt_plots = [('bjets', b_jets['track_pt']), ('light', light_jets['track_pt'])]
     _make_plot(pt_plots, 'track_pt.pdf', _pt, log=True)
-    z0_plots = [('raw',all_jets['particle_z0']), ('smeared', all_jets['track_z0'])]
-    _make_plot(z0_plots, 'z0_comp.pdf', 'z0')
-    _make_plot([('tracks per jet', all_jets['n_tracks'])], 'n_tracks.pdf', 'n trk')
-    _make_plot([('d0 sig', all_jets['track_d0sig'])], 'd0sig.pdf', 'd0 sig')
+    # z0_plots = [('raw',all_jets['particle_z0']), ('smeared', all_jets['track_z0'])]
+    # _make_plot(z0_plots, 'z0_comp.pdf', 'z0')
+    # _make_plot([('tracks per jet', all_jets['n_tracks'])], 'n_tracks.pdf', 'n trk')
+    # _make_plot([('d0 sig', all_jets['track_d0sig'])], 'd0sig.pdf', 'd0 sig')
     _make_plot([
         ('ip sig b', b_jets['track_ipsig']),
-        ('ip sig all', all_jets['track_ipsig'])],
-               'ipsig_bvsall.pdf', 'ip sig', norm=True)
-    _make_plot([
-        ('part ip b', b_jets['particle_ip']),
-        ('part ip all', all_jets['particle_ip'])],
-               'particle_ip_comp.pdf', 'particle ip', log=False, norm=True)
-    _make_plot([
-        ('track ip', b_jets['track_ip']),
-        ('track d0', b_jets['track_d0'])],
-               'bjet_track_ipvsd0.pdf', 'disp')
+        ('ip sig light', light_jets['track_ipsig'])],
+               'ipsig_bvsall.pdf', 'ip sig', norm=True, log=True)
+    # _make_plot([
+    #     ('part ip b', b_jets['particle_ip']),
+    #     ('part ip all', all_jets['particle_ip'])],
+    #            'particle_ip_comp.pdf', 'particle ip', log=False, norm=True)
+    # _make_plot([
+    #     ('track ip', b_jets['track_ip']),
+    #     ('track d0', b_jets['track_d0'])],
+    #            'bjet_track_ipvsd0.pdf', 'disp')
 
 _pt = r'$p_{\rm T}$'
 _ax_size = 12
@@ -63,7 +64,7 @@ def _make_plot(names, outname, xname, log=False, outdir='plots', norm=False):
     ax.set_ylabel(y_lab, y=0.98, ha='right', size=_ax_size)
     ax.set_xlim(*extent)
     if log:
-        ax.set_ylim(1, ax.get_ylim()[1])
+        ax.set_ylim(0.01 if norm else 1, ax.get_ylim()[1])
         ax.set_yscale('log')
     ax.legend(framealpha=0, prop=dict(size=_text_size))
     if not os.path.isdir(outdir):

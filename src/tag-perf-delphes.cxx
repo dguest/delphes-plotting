@@ -58,7 +58,7 @@ Hists::Hists():
   track_d0(100, -D0RNG, D0RNG, "mm"),
   track_ip(100, -D0RNG, D0RNG, "mm"),
   particle_d0(100, -D0RNG, D0RNG, "mm"),
-  particle_ip(100, -D0RNG/10, D0RNG/10, "mm"),
+  particle_ip(100, -D0RNG, D0RNG, "mm"),
   track_z0(100, -Z0RNG, Z0RNG, "mm"),
   particle_z0(100, -Z0RNG, Z0RNG, "mm"),
   track_d0sig(100, -10, 10, ""),
@@ -116,7 +116,10 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
 
   double ip = get_ip(track, jet);
   hists.track_ip.fill(ip);
-  hists.particle_ip.fill(get_ip(particle, jet));
+  double particle_ip = get_ip(particle, jet);
+  if (std::abs(particle_ip) > 1e-5) {
+    hists.particle_ip.fill(get_ip(particle, jet));
+  }
 
   float d0 = track->trkPar[TrackParam::D0];
   hists.track_d0.fill(d0);

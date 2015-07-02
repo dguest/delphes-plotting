@@ -27,7 +27,7 @@ def run():
     _make_plot([
         ('part ip b', b_jets['particle_ip']),
         ('part ip all', all_jets['particle_ip'])],
-               'particle_ip_comp.pdf', 'particle ip')
+               'particle_ip_comp.pdf', 'particle ip', log=False, norm=True)
     _make_plot([
         ('track ip', b_jets['track_ip']),
         ('track d0', b_jets['track_d0'])],
@@ -52,9 +52,9 @@ def _make_plot(names, outname, xname, log=False, outdir='plots', norm=False):
         xvals = np.linspace(*extent, num=(yvals.shape[0]))
         color = next(color_itr)
         if norm:
-            yvals /= yvals.sum()
+            yvals /= yvals[:-1].sum()
             y_lab = 'arb'
-        ax.plot(xvals, yvals, drawstyle='steps-post', label=leg, color=color)
+        ax.plot(xvals[:-1], yvals[:-1], drawstyle='steps-post', label=leg, color=color)
         units.add(dataset.attrs['units'][0])
     assert len(units) == 1, "incompatible units: {}".format(units)
 

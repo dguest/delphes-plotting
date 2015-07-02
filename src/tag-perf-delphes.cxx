@@ -36,7 +36,9 @@ struct Hists {
   Histogram n_jets;
   Histogram track_pt;
   Histogram track_d0;
+  Histogram track_ip;
   Histogram particle_d0;
+  Histogram particle_ip;
   Histogram track_z0;
   Histogram particle_z0;
   Histogram track_d0sig;
@@ -54,7 +56,9 @@ Hists::Hists():
   n_jets(MAX_JETS, -0.5, MAX_JETS + 0.5),
   track_pt(200, 0, 200, "GeV"),
   track_d0(100, -D0RNG, D0RNG, "mm"),
+  track_ip(100, -D0RNG, D0RNG, "mm"),
   particle_d0(100, -D0RNG, D0RNG, "mm"),
+  particle_ip(100, -D0RNG/10, D0RNG/10, "mm"),
   track_z0(100, -Z0RNG, Z0RNG, "mm"),
   particle_z0(100, -Z0RNG, Z0RNG, "mm"),
   track_d0sig(100, -10, 10, ""),
@@ -72,7 +76,9 @@ void Hists::save(H5::CommonFG& out_h5) {
   WRITE(n_jets);
   WRITE(track_pt);
   WRITE(track_d0);
+  WRITE(track_ip);
   WRITE(particle_d0);
+  WRITE(particle_ip);
   WRITE(track_z0);
   WRITE(particle_z0);
   WRITE(track_d0sig);
@@ -81,35 +87,42 @@ void Hists::save(H5::CommonFG& out_h5) {
 #undef WRITE
 }
 
-void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
-  hists.track_pt.fill(track->PT);
-
+double get_ip(const Track* track, const Jet* jet) {
   // took this form the TrackCountingBTagging module
   // track perigees
   float xd = track->Xd;
   float yd = track->Yd;
-  float d0 = track->trkPar[TrackParam::D0];
-  // these should be set equal by delphes
-  // if (std::abs(d0 - track->Dxy) > 0.0001){
-  //   printf("d0: %f, Dxy: %f\n", d0, track->Dxy);
-  // }
+  float d0 = track->Dxy;
 
   // jet momentum
   TLorentzVector jvec;
   jvec.SetPtEtaPhiM(jet->PT, jet->Eta, jet->Phi, jet->Mass);
-  float jpx = jvec.Px();
-  float jpy = jvec.Py();
+  double jpx = jvec.Px();
+  double jpy = jvec.Py();
 
   // signed impact parameter along jet axis
   int sign = (jpx*xd + jpy*yd > 0.0) ? 1 : -1;
-  float ip = sign*d0;
+  double ip = sign*d0;
+  return ip;
+}
 
+void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
+  TObject* particle_obj = track->Particle.GetObject();
+  assert(particle_obj != 0);
+  if (particle_obj->IsA() != Track::Class()) return;
+  const Track* particle = (Track*) track->Particle.GetObject();
 
+  hists.track_pt.fill(track->PT);
+
+  double ip = get_ip(track, jet);
+  hists.track_ip.fill(ip);
+  hists.particle_ip.fill(get_ip(particle, jet));
+
+  float d0 = track->trkPar[TrackParam::D0];
   hists.track_d0.fill(d0);
   float z0 = track->trkPar[TrackParam::Z0];
   hists.track_z0.fill(z0);
   {
-    Track* particle = (Track*) track->Particle.GetObject();
     float d0_particle = particle->trkPar[TrackParam::D0];
     // printf("d0 %f\n", d0_particle);
     hists.particle_d0.fill(d0_particle);

@@ -24,6 +24,14 @@ def run():
         ('ip sig b', b_jets['track_ipsig']),
         ('ip sig all', all_jets['track_ipsig'])],
                'ipsig_bvsall.pdf', 'ip sig', norm=True)
+    _make_plot([
+        ('part ip b', b_jets['particle_ip']),
+        ('part ip all', all_jets['particle_ip'])],
+               'particle_ip_comp.pdf', 'particle ip')
+    _make_plot([
+        ('track ip', b_jets['track_ip']),
+        ('track d0', b_jets['track_d0'])],
+               'bjet_track_ipvsd0.pdf', 'disp')
 
 _pt = r'$p_{\rm T}$'
 _ax_size = 12

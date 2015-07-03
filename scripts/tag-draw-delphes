@@ -13,9 +13,15 @@ def run():
     all_jets = h5f['all_jets']
     b_jets = h5f['b_jets']
     light_jets = h5f['light_jets']
+    leading_b = h5f['leading_track_b']
+    leading_light = h5f['leading_track_light']
     def three_flavor(variable):
         legs = [x.format(variable) for x in ['all {}', 'b {}', 'light {}']]
         datasets = [x[variable] for x in [all_jets, b_jets, light_jets]]
+        return zip(legs, datasets)
+    def leading(variable):
+        legs = [x.format(variable) for x in ['b {}', 'light {}']]
+        datasets = [x[variable] for x in [leading_b, leading_light]]
         return zip(legs, datasets)
 
     d0_plots = [
@@ -25,23 +31,25 @@ def run():
         ('smeared light', light_jets['track_d0']),
     ]
     _make_plot(d0_plots, 'd0_comp.pdf', 'd0', log=True)
-    pt_plots = [('bjets', b_jets['track_pt']), ('light', light_jets['track_pt'])]
-    _make_plot(pt_plots, 'track_pt.pdf', _pt, log=True)
+    _make_plot(three_flavor('track_pt'), 'track_pt.pdf', _pt, log=True)
     # z0_plots = [('raw',all_jets['particle_z0']), ('smeared', all_jets['track_z0'])]
     # _make_plot(z0_plots, 'z0_comp.pdf', 'z0')
     # _make_plot([('tracks per jet', all_jets['n_tracks'])], 'n_tracks.pdf', 'n trk')
     _make_plot(three_flavor('track_d0sig'), 'd0sig.pdf', 'd0 sig', log=True)
     _make_plot(three_flavor('track_ipsig'), 'ipsig.pdf', 'ip sig', log=True)
-    # _make_plot([
-    #     ('part ip b', b_jets['particle_ip']),
-    #     ('part ip all', all_jets['particle_ip'])],
-    #            'particle_ip_comp.pdf', 'particle ip', log=False, norm=True)
-    # _make_plot([
-    #     ('track ip', b_jets['track_ip']),
-    #     ('track d0', b_jets['track_d0'])],
-    #            'bjet_track_ipvsd0.pdf', 'disp')
+    _make_plot([
+        ('track ip', b_jets['track_ip']),
+        ('track d0', b_jets['track_d0'])],
+               'bjet_track_ipvsd0.pdf', 'disp')
     _make_plot(three_flavor('track_jet_dr'), 'trackjetdr.pdf', '$\Delta R$',
                log=True)
+    _make_plot(leading('track_ip'), 'leading_ip.pdf', 'IP')
+    _make_plot(leading('track_d0'), 'leading_d0.pdf', 'd0')
+    _make_plot(leading('track_pt'), 'leading_pt.pdf', _pt, log=True)
+    _make_plot([
+        ('leading', leading_light['track_pt']),
+        ('all', light_jets['track_pt'])],
+               'pt_leading_vs_all.pdf', _pt, log=True)
 
 _pt = r'$p_{\rm T}$'
 _ax_size = 12

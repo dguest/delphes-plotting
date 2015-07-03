@@ -25,7 +25,7 @@ const double MeV = 0.001;
 
 // b-tagging bits
 namespace bit {
-  const unsigned BTAG = 1 << 0;
+  const unsigned B_TAG = 1 << 0;
   const unsigned B_FLAVOR = 1 << 1;
 }
 
@@ -33,6 +33,7 @@ struct Hists {
   Hists();
   void save(std::string);
   void save(H5::CommonFG&);
+  void save(H5::CommonFG&, const std::string&);
   Histogram n_tracks;
   Histogram n_jets;
   Histogram track_jet_dr;
@@ -89,6 +90,10 @@ void Hists::save(H5::CommonFG& out_h5) {
   WRITE(track_z0sig);
   WRITE(track_ipsig);
 #undef WRITE
+}
+void Hists::save(H5::CommonFG& out_file, const std::string& name) {
+  H5::Group group(out_file.createGroup(name));
+  save(group);
 }
 
 double get_ip(const Track* track, const Jet* jet) {
@@ -152,6 +157,7 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
   }
 }
 
+
 // ____________________________________________________
 // main function
 
@@ -189,6 +195,8 @@ int main(int argc, char *argv[])
   Hists hists;
   Hists b_jet_hists;
   Hists light_jet_hists;
+  Hists leading_track_b_hists;
+  Hists leading_track_light_hists;
 
   // Loop over all events
   for(Int_t entry = 0; entry < numberOfEntries; ++entry)
@@ -204,32 +212,39 @@ int main(int argc, char *argv[])
       Jet* jet = root::as<Jet>(bJets->At(i_jet));
       int n_constituents = jet->Constituents.GetEntriesFast();
 
+      bool b_label = (jet->BTag & bit::B_FLAVOR);
+      bool b_tag = (jet->BTag & bit::B_TAG);
+
       // loop over all the tracks
       int n_tracks = 0;
+      std::map<double, Track*> track_by_pt;
       for (int iii = 0; iii < n_constituents; iii++) {
 	TObject* obj = jet->Constituents.At(iii);
 	if (!root::is_class<Track>(obj)) continue;
 	auto* track = root::as<Track>(obj);
 	n_tracks++;
-	// Track* track = (Track*) obj;
+	track_by_pt[track->PT] = track;
 	fill_track_hists(hists, track, jet);
-	if (jet->BTag & bit::B_FLAVOR) {
+	if (b_label) {
 	  fill_track_hists(b_jet_hists, track, jet);
 	} else {
 	  fill_track_hists(light_jet_hists, track, jet);
 	}
       }	// end loop over jet tracks
       hists.n_tracks.fill(n_tracks);
-
+      if (track_by_pt.size() > 0) {
+      	const auto* track = track_by_pt.crbegin()->second;
+      	if (b_label) fill_track_hists(leading_track_b_hists, track, jet);
+      	else fill_track_hists(leading_track_light_hists, track, jet);
+      }
     } // end loop over jets
   }   // end loop over events
   H5::H5File out_file(out_name, H5F_ACC_EXCL);
-  H5::Group all_jet_group(out_file.createGroup("all_jets"));
-  hists.save(all_jet_group);
-  H5::Group b_jet_group(out_file.createGroup("b_jets"));
-  b_jet_hists.save(b_jet_group);
-  H5::Group light_jet_group(out_file.createGroup("light_jets"));
-  light_jet_hists.save(light_jet_group);
+  hists.save(out_file, "all_jets");
+  b_jet_hists.save(out_file, "b_jets");
+  light_jet_hists.save(out_file,"light_jets");
+  leading_track_light_hists.save(out_file, "leading_track_light");
+  leading_track_b_hists.save(out_file, "leading_track_b");
   return 0;
 
 }

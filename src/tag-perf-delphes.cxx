@@ -144,10 +144,10 @@ int walk_idx(TClonesArray* particles, int idx, int target = 25) {
   return walk_idx(particles, part->M2, target);
 }
 
-typedef std::deque<int> PIDs;
-PIDs walk_pids(TClonesArray* particles, int idx,
-	       const PIDs& target = {5, 6}, PIDs history = {0, 0},
-	       PIDs indices = {-2, -2}) {
+typedef std::deque<int> ISEQ;
+ISEQ walk_pids(TClonesArray* particles, int idx,
+	       const ISEQ& target = {5, 6}, ISEQ history = {0, 0},
+	       ISEQ indices = {-2, -2}) {
   indices.push_back(idx);
   indices.pop_front();
   if (idx == -1) return indices;
@@ -160,21 +160,37 @@ PIDs walk_pids(TClonesArray* particles, int idx,
     // std::cout << "found pids";
     // for (auto pid: history) std::cout << ", " << pid;
     // std::cout << std::endl;;
+    // printf("found! %i", history.back());
     return indices;
   }
 
-  PIDs first_try = walk_pids(particles, part->M1, target, history, indices);
-  if (first_try.back() != -1) return first_try;
-
-  return walk_pids(particles, part->M2, target, history, indices);
+  ISEQ first_try = walk_pids(particles, part->M1, target, history, indices);
+  if (first_try.back() != -1) {
+    // printf(" %i", history.back());
+    first_try.push_front(idx);
+    return first_try;
+  }
+  ISEQ second_try = walk_pids(particles, part->M2, target, history, indices);
+  if (second_try.back() != -1) {
+    // printf(" %i", history.back());
+    second_try.push_front(idx);
+  }
+  return second_try;
 }
 
 GenParticle* get_daughter(TClonesArray* particles, int idx,
-			  const PIDs sequence) {
-  PIDs seq = walk_pids(particles, idx, sequence);
-  int daughter_idx = seq.front();
+			  const ISEQ target, bool verb = false) {
+  ISEQ seq = walk_pids(particles, idx, target);
   int mom_idx = seq.back();
   if (mom_idx == -1) return 0;
+  int daughter_idx = seq.at(seq.size() - target.size());
+  if (verb) {
+    std::cout << "found!";
+    for (auto idx: seq) {
+      std::cout << " "<< root::as<GenParticle>(particles->At(idx))->PID;
+    }
+    std::cout << std::endl;
+  }
   return root::as<GenParticle>(particles->At(daughter_idx));
 }
 
@@ -187,7 +203,7 @@ GenParticle* get_gen_particle(const Track* track) {
 
 GenParticle* get_parent_with_decay(const Track* track,
 				   TClonesArray* particles,
-				   PIDs sequence = {5, 6}){
+				   ISEQ sequence = {5, 6}){
   GenParticle* part = get_gen_particle(track);
   if (!part) return 0;
   GenParticle* decay1 = get_daughter(particles, part->M1, sequence);

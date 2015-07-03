@@ -2,5 +2,4 @@
 #define TRUTH_TOOLS
 
 
-
 #endif

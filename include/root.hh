@@ -15,11 +15,11 @@ namespace root {
 
   // check class type
   template <typename T>
-  bool is_class(const TObject& obj);
+  bool is(const TObject& obj);
 
   // same as above, check for null pointer too
   template <typename T>
-  bool is_class(const TObject* obj);
+  bool is(const TObject* obj);
 
   // throw exception if wrong class
   template <typename T>
@@ -41,7 +41,7 @@ namespace root {
 
   template <typename T>
   void require_class(const TObject& obj) {
-    if (!is_class<T>(obj)) {
+    if (!is<T>(obj)) {
       std::string expected = T::Class()->GetName();
       std::string classname = obj.IsA()->GetName();
       std::string err = "expected class of type '" + expected + "' found"
@@ -51,12 +51,12 @@ namespace root {
   }
 
   template <typename T>
-  bool is_class(const TObject* obj) {
+  bool is(const TObject* obj) {
     if (obj == 0) return false;
-    return is_class<T>(*obj);
+    return is<T>(*obj);
   }
   template <typename T>
-  bool is_class(const TObject& obj) {
+  bool is(const TObject& obj) {
     return obj.IsA() == T::Class();
   }
 }

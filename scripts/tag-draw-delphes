@@ -50,6 +50,7 @@ def run():
         ('leading', leading_light['track_pt']),
         ('all', light_jets['track_pt'])],
                'pt_leading_vs_all.pdf', _pt, log=True)
+    _make_plot(three_flavor('initial_d0'), 'initial_d0.pdf', 'd0')
 
 _pt = r'$p_{\rm T}$'
 _ax_size = 12

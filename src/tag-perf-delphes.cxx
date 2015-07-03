@@ -137,7 +137,7 @@ TObject* walk_track(const Track* track, int& depth){
 int walk_idx(TClonesArray* particles, int idx, int target = 25) {
   if (idx == -1) return -1;
   GenParticle* part = root::as<GenParticle>(particles->At(idx));
-  printf("PID: %i\n", part->PID);
+  // printf("PID: %i\n", part->PID);
   if (std::abs(part->PID) == target) return idx;
   int first_try = walk_idx(particles, part->M1, target);
   if (first_try != -1) return first_try;
@@ -153,14 +153,15 @@ PIDs walk_pids(TClonesArray* particles, int idx,
   if (idx == -1) return indices;
   GenParticle* part = root::as<GenParticle>(particles->At(idx));
   int pid = part->PID;
-  printf("PID: %i\n", pid);
   history.push_back(std::abs(pid));
   history.pop_front();
-  std::cout << "hist ";
-  for (auto pid: history) std::cout << pid;
-  std::cout << std::endl;;
 
-  if (history == target) return indices;
+  if (history == target){
+    // std::cout << "found pids";
+    // for (auto pid: history) std::cout << ", " << pid;
+    // std::cout << std::endl;;
+    return indices;
+  }
 
   PIDs first_try = walk_pids(particles, part->M1, target, history, indices);
   if (first_try.back() != -1) return first_try;
@@ -170,24 +171,11 @@ PIDs walk_pids(TClonesArray* particles, int idx,
 
 GenParticle* get_daughter(TClonesArray* particles, int idx,
 			  int mom = 6, int daughterid = 5) {
-  int top_index = walk_idx(particles, idx, mom);
-  if (top_index == -1) return 0;
-  GenParticle* top = root::as<GenParticle>(particles->At(idx));
-  printf("found parent!\n");
-  for (int didx : {top->D1, top->D2} ) {
-      if (didx != -1) {
-	GenParticle* dtr = root::as<GenParticle>(particles->At(didx));
-	int dtrid = dtr->PID;
-	if (std::abs(dtr->PID) == daughterid) {
-	  printf("found daughter!\n");
-	  return dtr;
-	} else {
-	  printf("dtr id: %i\n", dtrid);
-	}
-
-      }
-  }
-  return 0;
+  PIDs seq = walk_pids(particles, idx, {daughterid, mom});
+  int daughter_idx = seq.at(0);
+  int mom_idx = seq.at(1);
+  if (mom_idx == -1) return 0;
+  return root::as<GenParticle>(particles->At(daughter_idx));
 }
 
 GenParticle* get_gen_particle(const Track* track) {
@@ -257,8 +245,8 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
   }
   double ix = gen->X;
   double iy = gen->Y;
-  std::cout << ix << " " << iy << " " << gen->PID << " "
-	    <<  " mothers " << gen->M1 << " " << gen->M2 <<std::endl;
+  // std::cout << ix << " " << iy << " " << gen->PID << " "
+  // 	    <<  " mothers " << gen->M1 << " " << gen->M2 <<std::endl;
   hists.initial_d0.fill(std::sqrt(ix*ix + iy*iy));
 }
 
@@ -332,15 +320,11 @@ int main(int argc, char *argv[])
 
 	// get b parent (if there is one)
 	GenParticle* b_parent = get_parent_with_decay(track, bPart);
-	if (b_parent) {
-	  printf("found b parent!\n");
-	} else {
-	  printf("no b found\n");
-	}
+	bool has_b_parent = b_parent;
 
 	// fill hists
 	fill_track_hists(hists, track, jet);
-	if (b_label) {
+	if (has_b_parent) {
 	  fill_track_hists(b_jet_hists, track, jet);
 	} else {
 	  fill_track_hists(light_jet_hists, track, jet);

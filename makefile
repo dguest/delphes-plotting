@@ -75,7 +75,7 @@ LDFLAGS      += $(ROOTLDFLAGS)
 LIBS         += $(ROOTLIBS)
 
 # ---- define objects
-GEN_OBJ     := ExRootTreeReader.o misc_func.o
+GEN_OBJ     := ExRootTreeReader.o misc_func.o truth_tools.o
 TOP_OBJ     += tag-perf-delphes.o
 
 # stuff used for the c++ executable

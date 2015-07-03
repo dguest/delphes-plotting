@@ -13,18 +13,25 @@ def run():
     all_jets = h5f['all_jets']
     b_jets = h5f['b_jets']
     light_jets = h5f['light_jets']
-    # d0_plots = [('raw',all_jets['particle_d0']), ('smeared',all_jets['track_d0'])]
-    # _make_plot(d0_plots, 'd0_comp.pdf', 'd0')
+    def three_flavor(variable):
+        legs = [x.format(variable) for x in ['all {}', 'b {}', 'light {}']]
+        datasets = [x[variable] for x in [all_jets, b_jets, light_jets]]
+        return zip(legs, datasets)
+
+    d0_plots = [
+        ('raw b',b_jets['particle_d0']),
+        ('smeared b',b_jets['track_d0']),
+        ('raw light.', light_jets['particle_d0']),
+        ('smeared light', light_jets['track_d0']),
+    ]
+    _make_plot(d0_plots, 'd0_comp.pdf', 'd0', log=True)
     pt_plots = [('bjets', b_jets['track_pt']), ('light', light_jets['track_pt'])]
     _make_plot(pt_plots, 'track_pt.pdf', _pt, log=True)
     # z0_plots = [('raw',all_jets['particle_z0']), ('smeared', all_jets['track_z0'])]
     # _make_plot(z0_plots, 'z0_comp.pdf', 'z0')
     # _make_plot([('tracks per jet', all_jets['n_tracks'])], 'n_tracks.pdf', 'n trk')
-    # _make_plot([('d0 sig', all_jets['track_d0sig'])], 'd0sig.pdf', 'd0 sig')
-    _make_plot([
-        ('ip sig b', b_jets['track_ipsig']),
-        ('ip sig light', light_jets['track_ipsig'])],
-               'ipsig_bvsall.pdf', 'ip sig', norm=True, log=True)
+    _make_plot(three_flavor('track_d0sig'), 'd0sig.pdf', 'd0 sig', log=True)
+    _make_plot(three_flavor('track_ipsig'), 'ipsig.pdf', 'ip sig', log=True)
     # _make_plot([
     #     ('part ip b', b_jets['particle_ip']),
     #     ('part ip all', all_jets['particle_ip'])],
@@ -33,6 +40,8 @@ def run():
     #     ('track ip', b_jets['track_ip']),
     #     ('track d0', b_jets['track_d0'])],
     #            'bjet_track_ipvsd0.pdf', 'disp')
+    _make_plot(three_flavor('track_jet_dr'), 'trackjetdr.pdf', '$\Delta R$',
+               log=True)
 
 _pt = r'$p_{\rm T}$'
 _ax_size = 12
@@ -45,7 +54,7 @@ def _make_plot(names, outname, xname, log=False, outdir='plots', norm=False):
     fig = Figure(figsize=(5.0, 5.0*3/4))
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(1,1,1)
-    color_itr = iter(['black', 'red'])
+    color_itr = iter(['black', 'red', 'blue', 'darkgreen'])
     units = set()
     for leg, dataset in names:
         extent = [dataset.attrs[x][0] for x in ['min', 'max']]

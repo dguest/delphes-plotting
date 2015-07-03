@@ -35,6 +35,7 @@ struct Hists {
   void save(H5::CommonFG&);
   Histogram n_tracks;
   Histogram n_jets;
+  Histogram track_jet_dr;
   Histogram track_pt;
   Histogram track_d0;
   Histogram track_ip;
@@ -55,6 +56,7 @@ const float Z0RNG = 0.1;
 Hists::Hists():
   n_tracks(MAX_TRACKS, -0.5, MAX_TRACKS + 0.5),
   n_jets(MAX_JETS, -0.5, MAX_JETS + 0.5),
+  track_jet_dr(200, 0, 5),
   track_pt(200, 0, 200, "GeV"),
   track_d0(100, -D0RNG, D0RNG, "mm"),
   track_ip(100, -D0RNG, D0RNG, "mm"),
@@ -75,6 +77,7 @@ void Hists::save(H5::CommonFG& out_h5) {
 #define WRITE(VAR) VAR.write_to(out_h5, #VAR)
   WRITE(n_tracks);
   WRITE(n_jets);
+  WRITE(track_jet_dr);
   WRITE(track_pt);
   WRITE(track_d0);
   WRITE(track_ip);
@@ -108,11 +111,13 @@ double get_ip(const Track* track, const Jet* jet) {
 }
 
 void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
-  TObject* particle_obj = track->Particle.GetObject();
-  assert(particle_obj != 0);
-  if (particle_obj->IsA() != Track::Class()) return;
-  const Track* particle = (Track*) track->Particle.GetObject();
+  const Track* particle = root::as<Track>(track->Particle.GetObject());
 
+  TLorentzVector jvec;
+  jvec.SetPtEtaPhiM(jet->PT, jet->Eta, jet->Phi, jet->Mass);
+  TLorentzVector trackvec;
+  trackvec.SetPtEtaPhiM(track->PT, track->Eta, track->Phi, 0);
+  hists.track_jet_dr.fill(jvec.DeltaR(trackvec));
   hists.track_pt.fill(track->PT);
 
   double ip = get_ip(track, jet);
@@ -174,13 +179,11 @@ int main(int argc, char *argv[])
   treeReader->UseBranch("Electron");
   treeReader->UseBranch("Photon");
   treeReader->UseBranch("Muon");
-
-  // TODO: figure out why this makes all my tracks go away!
   treeReader->UseBranch("Tower");
 
   treeReader->UseBranch("EFlowTrack");
-  treeReader->UseBranch("EFlowPhoton");
-  treeReader->UseBranch("EFlowNeutralHadron");
+  // treeReader->UseBranch("EFlowPhoton");
+  // treeReader->UseBranch("EFlowNeutralHadron");
   TClonesArray* bJets = treeReader->UseBranch("Jet");
 
   Hists hists;
@@ -198,19 +201,15 @@ int main(int argc, char *argv[])
 
     // loop over jets
     for (int i_jet = 0; i_jet < n_jets; i_jet++) {
-      Jet* jet = (Jet*) bJets->At(i_jet);
+      Jet* jet = root::as<Jet>(bJets->At(i_jet));
       int n_constituents = jet->Constituents.GetEntriesFast();
 
       // loop over all the tracks
       int n_tracks = 0;
       for (int iii = 0; iii < n_constituents; iii++) {
 	TObject* obj = jet->Constituents.At(iii);
-	if (obj == 0){
-	  printf("null object\n");
-	  continue;
-	}
-	if (!root::is_class<Track>(*obj)) continue;
-	auto* track = root::as_a<Track>(obj);
+	if (!root::is_class<Track>(obj)) continue;
+	auto* track = root::as<Track>(obj);
 	n_tracks++;
 	// Track* track = (Track*) obj;
 	fill_track_hists(hists, track, jet);

@@ -160,7 +160,7 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
     float z0sig = z0 / std::sqrt(z0_cov);
     hists.track_z0sig.fill(z0sig);
   }
-  GenParticle* gen = get_gen_particle(track);
+  GenParticle* gen = truth::get_gen_particle(track);
   if (!gen) {
     printf("none!\n");
     return;
@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
 	track_by_pt[track->PT] = track;
 
 	// get b parent (if there is one)
-	GenParticle* b_parent = get_parent_with_decay(track, bPart);
+	GenParticle* b_parent = truth::get_parent_with_decay(track, bPart);
 	bool has_b_parent = b_parent;
 
 	// fill hists

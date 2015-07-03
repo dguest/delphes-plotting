@@ -91,21 +91,25 @@ namespace {
 
 }
 
-GenParticle* get_gen_particle(const Track* track) {
-  int depth = 0;
-  TObject* thing = walk_track(track, depth);
-  if (thing) return root::as<GenParticle>(thing);
-  return 0;
-}
+namespace truth {
+
+  GenParticle* get_gen_particle(const Track* track) {
+    int depth = 0;
+    TObject* thing = walk_track(track, depth);
+    if (thing) return root::as<GenParticle>(thing);
+    return 0;
+  }
 
 
 
-GenParticle* get_parent_with_decay(const Track* track,
-				   TClonesArray* particles,
-				   ISEQ sequence){
-  GenParticle* part = get_gen_particle(track);
-  if (!part) return 0;
-  GenParticle* decay1 = get_daughter(particles, part->M1, sequence);
-  if (decay1) return decay1;
-  return get_daughter(particles, part->M2, sequence);
+  GenParticle* get_parent_with_decay(const Track* track,
+				     TClonesArray* particles,
+				     ISEQ sequence){
+    GenParticle* part = get_gen_particle(track);
+    if (!part) return 0;
+    GenParticle* decay1 = get_daughter(particles, part->M1, sequence);
+    if (decay1) return decay1;
+    return get_daughter(particles, part->M2, sequence);
+  }
+
 }

@@ -7,11 +7,9 @@
 #include "root.hh"
 
 #include <deque>
-
-// this stuff should normally be silent
-#ifdef DEBUG
+#include <cassert>
 #include <iostream>
-#endif // DEBUG
+#include <set>
 
 namespace {
 
@@ -42,55 +40,65 @@ namespace {
   }
   */
 
+  // main recursive truth record walk function
   typedef std::deque<int> ISEQ;
   ISEQ walk_pids(TClonesArray* particles, int idx,
-		 const ISEQ& target = {5, 6}, ISEQ history = {0, 0},
-		 ISEQ indices = {-2, -2}) {
-    indices.push_back(idx);
-    indices.pop_front();
-    if (idx == -1) return indices;
+		 const ISEQ& target = {5, 6}, ISEQ history = {0, 0}) {
+
+    // return error code if we were directed to an empty particle
+    if (idx == -1){
+      return {-1};
+    }
+
+    // get the particle, check if it satisfies the sequence
     GenParticle* part = root::as<GenParticle>(particles->At(idx));
-    int pid = part->PID;
-    history.push_back(std::abs(pid));
-    history.pop_front();
+    int pid = std::abs(part->PID); // NOTE: do this to ignore anti-particles
+    // we only pay attention when the PID changes
+    if (pid != history.back()){
+      history.push_back(pid);
+    }
+    if (history.size() > target.size()) history.pop_front();
 
     if (history == target){
-      return indices;
+      return {idx};
     }
 
-    ISEQ first_try = walk_pids(particles, part->M1, target, history, indices);
-    if (first_try.back() != -1) {
-      // printf(" %i", history.back());
-      first_try.push_front(idx);
-      return first_try;
+    for (int nextidx: {part->M1, part->M2} ) {
+      ISEQ seq = walk_pids(particles, nextidx, target, history);
+      if (seq.back() != -1) {
+	seq.push_front(idx);
+	return seq;
+      }
     }
-    ISEQ second_try = walk_pids(particles, part->M2, target, history, indices);
-    if (second_try.back() != -1) {
-      // printf(" %i", history.back());
-      second_try.push_front(idx);
-    }
-    return second_try;
+    return {-1};
   }
 
-  GenParticle* get_parent_particle(TClonesArray* particles, int idx,
+  // some PIDs are ignored while walking the decay chain
+  std::set<int> ignored_pid({91, 92, 93});
+
+  GenParticle* get_parent_particle(TClonesArray* particles, int start_idx,
 				   const ISEQ target, int step_back) {
-    ISEQ seq = walk_pids(particles, idx, target);
+    using root::as;
+    ISEQ seq = walk_pids(particles, start_idx, target);
     int mom_idx = seq.back();
     if (mom_idx == -1) return 0;
-    int seq_position = seq.size() - 1 - step_back;
-    if (seq_position < 0) return 0;
-    int daughter_idx = seq.at(seq_position);
 
-#ifdef DEBUG
-    // IODEBUG
-    std::cout << "found!";
-    for (auto idx: seq) {
-      std::cout << " " << root::as<GenParticle>(particles->At(idx))->PID;
+    int last_pid = std::abs(as<GenParticle>(particles->At(mom_idx))->PID);
+    assert(last_pid == target.back());
+
+    // walk back some number of steps to find the daughter of the decay
+    for (auto idx = seq.rbegin(); idx != seq.rend(); idx++) {
+      GenParticle* part = as<GenParticle>(particles->At(*idx));
+      if (step_back == 0){
+	return part;
+      }
+      int this_pid = std::abs(part->PID);
+      if (!ignored_pid.count(this_pid) && last_pid != this_pid) {
+	last_pid = this_pid;
+	step_back--;
+      }
     }
-    std::cout << std::endl;
-#endif //DEBUG
-
-    return root::as<GenParticle>(particles->At(daughter_idx));
+    return 0;
   }
 
 }
@@ -103,7 +111,6 @@ namespace truth {
     if (thing) return root::as<GenParticle>(thing);
     return 0;
   }
-
 
 
   GenParticle* get_parent(const Track* track,

@@ -243,7 +243,12 @@ int main(int argc, char *argv[])
 	// get daughter of b from top (if there is one)
 	std::deque<int> t_seq{5, 6};
 	GenParticle* b_daut = truth::get_parent(track, bPart, t_seq, 2);
-	if (b_daut) printf("found b daughter, pid: %i\n", b_daut->PID);
+	if (b_daut){
+	  printf("found b daughter, pid: %i\n", b_daut->PID);
+	  double x = b_daut->X;
+	  double y = b_daut->Y;
+	  printf("dxy: %f\n", std::sqrt(x*x + y*y));
+	}
 	bool has_b_parent = b_daut;
 
 	// fill hists

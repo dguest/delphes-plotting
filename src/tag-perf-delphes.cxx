@@ -170,10 +170,10 @@ PIDs walk_pids(TClonesArray* particles, int idx,
 }
 
 GenParticle* get_daughter(TClonesArray* particles, int idx,
-			  int mom = 6, int daughterid = 5) {
-  PIDs seq = walk_pids(particles, idx, {daughterid, mom});
-  int daughter_idx = seq.at(0);
-  int mom_idx = seq.at(1);
+			  const PIDs sequence) {
+  PIDs seq = walk_pids(particles, idx, sequence);
+  int daughter_idx = seq.front();
+  int mom_idx = seq.back();
   if (mom_idx == -1) return 0;
   return root::as<GenParticle>(particles->At(daughter_idx));
 }
@@ -190,12 +190,9 @@ GenParticle* get_parent_with_decay(const Track* track,
 				   PIDs sequence = {5, 6}){
   GenParticle* part = get_gen_particle(track);
   if (!part) return 0;
-  int parentpid = sequence.at(1);
-  int daughterid = sequence.at(0);
-  GenParticle* decay1 = get_daughter(
-    particles, part->M1, parentpid, daughterid);
+  GenParticle* decay1 = get_daughter(particles, part->M1, sequence);
   if (decay1) return decay1;
-  return get_daughter(particles, part->M2, parentpid, daughterid);
+  return get_daughter(particles, part->M2, sequence);
 }
 
 void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {

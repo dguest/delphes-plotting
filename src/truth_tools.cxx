@@ -30,6 +30,7 @@ namespace {
     return 0;
   }
 
+  /* not currently used for anything
   int walk_idx(TClonesArray* particles, int idx, int target = 25) {
     if (idx == -1) return -1;
     GenParticle* part = root::as<GenParticle>(particles->At(idx));
@@ -39,6 +40,7 @@ namespace {
     if (first_try != -1) return first_try;
     return walk_idx(particles, part->M2, target);
   }
+  */
 
   typedef std::deque<int> ISEQ;
   ISEQ walk_pids(TClonesArray* particles, int idx,
@@ -70,12 +72,14 @@ namespace {
     return second_try;
   }
 
-  GenParticle* get_daughter(TClonesArray* particles, int idx,
-			    const ISEQ target, bool verb = false) {
+  GenParticle* get_parent_particle(TClonesArray* particles, int idx,
+				   const ISEQ target, int step_back) {
     ISEQ seq = walk_pids(particles, idx, target);
     int mom_idx = seq.back();
     if (mom_idx == -1) return 0;
-    int daughter_idx = seq.at(seq.size() - target.size());
+    int seq_position = seq.size() - 1 - step_back;
+    if (seq_position < 0) return 0;
+    int daughter_idx = seq.at(seq_position);
 
 #ifdef DEBUG
     // IODEBUG
@@ -102,14 +106,17 @@ namespace truth {
 
 
 
-  GenParticle* get_parent_with_decay(const Track* track,
-				     TClonesArray* particles,
-				     ISEQ sequence){
+  GenParticle* get_parent(const Track* track,
+			  TClonesArray* particles,
+			  ISEQ sequence, int step_back){
     GenParticle* part = get_gen_particle(track);
     if (!part) return 0;
-    GenParticle* decay1 = get_daughter(particles, part->M1, sequence);
-    if (decay1) return decay1;
-    return get_daughter(particles, part->M2, sequence);
+    for (int id: {part->M1, part->M2} ){
+      GenParticle* decay = get_parent_particle(
+	particles, id, sequence, step_back);
+      if (decay) return decay;
+    }
+    return 0;
   }
 
 }

@@ -240,9 +240,11 @@ int main(int argc, char *argv[])
 	n_tracks++;
 	track_by_pt[track->PT] = track;
 
-	// get b parent (if there is one)
-	GenParticle* b_parent = truth::get_parent_with_decay(track, bPart);
-	bool has_b_parent = b_parent;
+	// get daughter of b from top (if there is one)
+	std::deque<int> t_seq{5, 6};
+	GenParticle* b_daut = truth::get_parent(track, bPart, t_seq, 2);
+	if (b_daut) printf("found b daughter, pid: %i\n", b_daut->PID);
+	bool has_b_parent = b_daut;
 
 	// fill hists
 	fill_track_hists(hists, track, jet);

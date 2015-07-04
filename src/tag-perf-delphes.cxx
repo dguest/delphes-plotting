@@ -212,6 +212,7 @@ int main(int argc, char *argv[])
   Hists light_jet_hists;
   Hists leading_track_b_hists;
   Hists leading_track_light_hists;
+  std::map<int, int> b_decay_pids;
 
   // Loop over all events
   for(Int_t entry = 0; entry < numberOfEntries; ++entry)
@@ -241,19 +242,28 @@ int main(int argc, char *argv[])
 	track_by_pt[track->PT] = track;
 
 	// get daughter of b from top (if there is one)
+	// TODO: figure out what's going on here.
+	//       Look in get_parent_particle for clues...
 	std::deque<int> t_seq{5, 6};
+	std::deque<int> at_seq{-5, -6};
 	GenParticle* b_daut = truth::get_parent(track, bPart, t_seq, 2);
-	if (b_daut){
-	  printf("found b daughter, pid: %i\n", b_daut->PID);
-	  double x = b_daut->X;
-	  double y = b_daut->Y;
-	  printf("dxy: %f\n", std::sqrt(x*x + y*y));
+	GenParticle* ab_daut = truth::get_parent(track, bPart, at_seq, 2);
+	GenParticle* daut = b_daut ? b_daut : ab_daut;
+	if (daut){
+	  using std::pow;
+	  using std::sqrt;
+	  b_decay_pids[daut->PID]++;
+	  std::cout << truth::map_particle(daut->PID) << " "
+		    << daut->PID << " "
+		    << sqrt(pow(daut->X,2) + pow(daut->Y,2))
+		    << std::endl;
+	} else {
+	  printf("none\n");
 	}
-	bool has_b_parent = b_daut;
 
 	// fill hists
 	fill_track_hists(hists, track, jet);
-	if (has_b_parent) {
+	if (b_label) {
 	  fill_track_hists(b_jet_hists, track, jet);
 	} else {
 	  fill_track_hists(light_jet_hists, track, jet);
@@ -273,6 +283,17 @@ int main(int argc, char *argv[])
   light_jet_hists.save(out_file,"light_jets");
   leading_track_light_hists.save(out_file, "leading_track_light");
   leading_track_b_hists.save(out_file, "leading_track_b");
+
+  // dump list of most common particle decays
+  std::vector<std::pair<int,int>> number_and_pid;
+  for (const auto& itr: b_decay_pids) {
+    number_and_pid.emplace_back(itr.second,itr.first);
+  }
+  std::sort(number_and_pid.begin(), number_and_pid.end());
+  for (const auto& itr: number_and_pid) {
+    printf("%s, num: %i\n",
+	   truth::map_particle(itr.second).c_str(), itr.first);
+  }
   return 0;
 
 }

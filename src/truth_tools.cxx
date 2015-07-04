@@ -10,6 +10,7 @@
 #include <cassert>
 #include <iostream>
 #include <set>
+#include <map>
 
 namespace {
 
@@ -52,7 +53,7 @@ namespace {
 
     // get the particle, check if it satisfies the sequence
     GenParticle* part = root::as<GenParticle>(particles->At(idx));
-    int pid = std::abs(part->PID); // NOTE: do this to ignore anti-particles
+    int pid = part->PID;
     // we only pay attention when the PID changes
     if (pid != history.back()){
       history.push_back(pid);
@@ -73,8 +74,96 @@ namespace {
     return {-1};
   }
 
+  //  I've looked up some PIDs
+  std::map<int, std::string> pid_map ({
+      // most common from t decays
+      {511, "B0"},
+      {521, "B+"},
+      {531, "Bs0"},
+      {413, "D*+"},
+      {5122, "Lb0"},
+      {423, "D*0"},
+      {311, "K0"},
+      {113, "rho0"},
+      {513, "B*0"},
+      {523, "B*+"},
+      {310, "Ks0"},
+      {433, "D*s+"},
+      {213, "rho+"},
+      {4122, "Lc+"},
+      {421, "D0"},
+      {223, "omega"},
+      {411, "D+"},
+      {3122, "L0"},
+      {431, "Ds+"},
+      {221, "eta"},
+      {313, "K*0"},
+      {1, "d"},
+      {2, "u"},
+      {323, "K*+"},
+      {3, "s"},
+      {331, "eta'"},
+      {15, "tau-"},
+      {20213, "a1+"},
+      {443, "J/psi"},
+      {111, "pi0"},
+      {415, "D*2+"},
+      {425, "D*20"},
+      {4132, "Xic0"},
+	// other useful SM ones
+      {4, "c"},
+      {5, "b"},
+      {6, "t"},
+      {21, "g"},
+      {22, "gamma"},
+      {23, "Z"},
+      {24, "W+"},
+      {25, "h"}
+    });
+  // change the sign of anti-particles
+  std::string flop_sign(std::string base) {
+      auto pos = base.find("+");
+      if (pos != std::string::npos) {
+	base.replace(pos, 1, "-");
+	return base;
+      }
+      pos = base.find("-");
+      if (pos != std::string::npos) {
+	base.replace(pos, 1, "+");
+	return base;
+      }
+      return "anti-" + base;
+  }
+
   // some PIDs are ignored while walking the decay chain
   std::set<int> ignored_pid({91, 92, 93});
+
+  // get heaviest quark in the pdgid
+  int major_quark(int pid){
+    int absid = std::abs(pid);
+    if (absid <= 6) return absid;
+    int tens = (absid % 100) / 10;
+    int hundreds = (absid % 1000) / 100;
+    int thousands = (absid % 10000) / 1000;
+    // things with no quarks (tens and thousands == 0) just get abs pid
+    if (hundreds == 0 && thousands == 0) {
+      return absid;
+    }
+    // the leading digit should be larger than or equal to the lower ones
+    assert(tens <= hundreds || tens <= thousands);
+    assert(thousands == 0 || hundreds <= thousands);
+    return std::max({tens, hundreds, thousands});
+  }
+
+  bool is_significant_shift(int pid1, int pid2) {
+    int absid1 = std::abs(pid1);
+    int absid2 = std::abs(pid2);
+
+    // index with `major_quark` function above
+    int major1 = major_quark(absid1);
+    int major2 = major_quark(absid2);
+    return (major1 != major2);
+  }
 
   GenParticle* get_parent_particle(TClonesArray* particles, int start_idx,
 				   const ISEQ target, int step_back) {
@@ -83,23 +172,36 @@ namespace {
     int mom_idx = seq.back();
     if (mom_idx == -1) return 0;
 
-    int last_pid = std::abs(as<GenParticle>(particles->At(mom_idx))->PID);
+    assert(seq.front() == start_idx);
+
+    int last_pid = as<GenParticle>(particles->At(mom_idx))->PID;
     assert(last_pid == target.back());
 
     // walk back some number of steps to find the daughter of the decay
     for (auto idx = seq.rbegin(); idx != seq.rend(); idx++) {
       GenParticle* part = as<GenParticle>(particles->At(*idx));
-      if (step_back == 0){
-	return part;
-      }
-      int this_pid = std::abs(part->PID);
-      if (!ignored_pid.count(this_pid) && last_pid != this_pid) {
+      int this_pid = part->PID;
+      bool ignored = ignored_pid.count(std::abs(this_pid));
+      if (!ignored) {
+	if (step_back == 0){
+	  return part;
+	}
+	// TODO: something is buggy here...
+	// if (major_quark(this_pid) == 5 || major_quark(last_pid) == 5)
+	  printf("steps: %d, this %d, last %d\n", step_back,
+					      this_pid, last_pid);
+	if (is_significant_shift(last_pid, this_pid)) {
+	  // decay_sequence.push_back(part);
+	  step_back--;
+	}
 	last_pid = this_pid;
-	step_back--;
-      }
+      }	// end maybe ignored particles
+
     }
-    return 0;
+    return as<GenParticle>(particles->At(start_idx));
   }
+
+
 
 }
 
@@ -126,4 +228,12 @@ namespace truth {
     return 0;
   }
 
+  std::string map_particle(int pid) {
+    bool neg = std::signbit(pid);
+    int apid = std::abs(pid);
+    if (!pid_map.count(apid)) return std::to_string(pid);
+    auto base = pid_map.at(std::abs(pid));
+    if (neg) base = flop_sign(base);
+    return base;
+  }
 }

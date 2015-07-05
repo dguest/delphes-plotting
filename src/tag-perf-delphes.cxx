@@ -234,6 +234,8 @@ int main(int argc, char *argv[])
       // loop over all the tracks
       int n_tracks = 0;
       std::map<double, Track*> track_by_pt;
+      // if (b_label) puts("new b-jet");
+      // else puts("light jet");
       for (int iii = 0; iii < n_constituents; iii++) {
 	TObject* obj = jet->Constituents.At(iii);
 	if (!root::is<Track>(obj)) continue;
@@ -244,8 +246,8 @@ int main(int argc, char *argv[])
 	// get daughter of b from top (if there is one)
 	// TODO: figure out what's going on here.
 	//       Look in get_parent_particle for clues...
-	std::deque<int> t_seq{5, 6};
-	std::deque<int> at_seq{-5, -6};
+	std::deque<int> t_seq{4, 5, 6};
+	std::deque<int> at_seq{-4, -5, -6};
 	GenParticle* b_daut = truth::get_parent(track, bPart, t_seq, 2);
 	GenParticle* ab_daut = truth::get_parent(track, bPart, at_seq, 2);
 	GenParticle* daut = b_daut ? b_daut : ab_daut;
@@ -253,12 +255,10 @@ int main(int argc, char *argv[])
 	  using std::pow;
 	  using std::sqrt;
 	  b_decay_pids[daut->PID]++;
-	  std::cout << truth::map_particle(daut->PID) << " "
-		    << daut->PID << " "
-		    << sqrt(pow(daut->X,2) + pow(daut->Y,2))
-		    << std::endl;
-	} else {
-	  printf("none\n");
+	  // std::cout << truth::map_particle(daut->PID) << " "
+	  // 	    << daut->PID << " "
+	  // 	    << sqrt(pow(daut->X,2) + pow(daut->Y,2))
+	  // 	    << std::endl;
 	}
 
 	// fill hists

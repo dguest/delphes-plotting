@@ -11,8 +11,12 @@
 #include <iostream>
 #include <set>
 #include <map>
+#include <list>
 
 namespace {
+  // we ignore `minor` particle changes
+  bool is_significant_shift(int pid1, int pid2);
+  int major_quark(int pid);
 
   TObject* walk_track(const Track* track, int& depth){
     if (!track) return 0;
@@ -43,8 +47,8 @@ namespace {
 
   // main recursive truth record walk function
   typedef std::deque<int> ISEQ;
-  ISEQ walk_pids(TClonesArray* particles, int idx,
-		 const ISEQ& target = {5, 6}, ISEQ history = {0, 0}) {
+  ISEQ walk_particle_index(TClonesArray* particles, int idx,
+			   const ISEQ& target = {5, 6}, ISEQ history = {-1}) {
 
     // return error code if we were directed to an empty particle
     if (idx == -1){
@@ -55,8 +59,8 @@ namespace {
     GenParticle* part = root::as<GenParticle>(particles->At(idx));
     int pid = part->PID;
     // we only pay attention when the PID changes
-    if (pid != history.back()){
-      history.push_back(pid);
+    if (is_significant_shift(pid,history.back())){
+      history.push_back(std::copysign(major_quark(pid), pid));
     }
     if (history.size() > target.size()) history.pop_front();
 
@@ -65,7 +69,7 @@ namespace {
     }
 
     for (int nextidx: {part->M1, part->M2} ) {
-      ISEQ seq = walk_pids(particles, nextidx, target, history);
+      ISEQ seq = walk_particle_index(particles, nextidx, target, history);
       if (seq.back() != -1) {
 	seq.push_front(idx);
 	return seq;
@@ -110,6 +114,7 @@ namespace {
       {415, "D*2+"},
       {425, "D*20"},
       {4132, "Xic0"},
+      {441, "etac"},
 	// other useful SM ones
       {4, "c"},
       {5, "b"},
@@ -150,7 +155,8 @@ namespace {
       return absid;
     }
     // the leading digit should be larger than or equal to the lower ones
-    assert(tens <= hundreds || tens <= thousands);
+    // special exception for K_short, number 130
+    assert(tens <= hundreds || tens <= thousands || absid == 130);
     assert(thousands == 0 || hundreds <= thousands);
     return std::max({tens, hundreds, thousands});
   }
@@ -165,40 +171,60 @@ namespace {
     return (major1 != major2);
   }
 
-  GenParticle* get_parent_particle(TClonesArray* particles, int start_idx,
-				   const ISEQ target, int step_back) {
+  // remove `insignificant' particles from the decay chain. When two
+  // particles differ insignificantly, the upstream one is removed.
+  // Originally implemented as a list (thus the complexity).
+  void clean_particles(std::vector<GenParticle*>& parts){
+    if (parts.size() < 2) return;
+    auto iter1 = parts.begin();
+    auto iter2 = iter1;
+    iter2++;
+    while(iter2 != parts.end()) {
+      const auto& part1 = **iter1;
+      const auto& part2 = **iter2;
+      bool ignored = ignored_pid.count(part2.PID);
+      bool insig = !is_significant_shift(part1.PID, part2.PID);
+      if (ignored || insig) {
+	iter2 = parts.erase(iter2);
+      } else {
+	iter2++;
+      }
+      iter1 = iter2;
+      iter1--;
+    }
+  }
+
+  GenParticle* get_chain(TClonesArray* particles, int start_idx,
+			 const ISEQ target, int step_back) {
     using root::as;
-    ISEQ seq = walk_pids(particles, start_idx, target);
+    std::deque<int> end_target{target.back()};
+    ISEQ seq = walk_particle_index(particles, start_idx, end_target);
     int mom_idx = seq.back();
     if (mom_idx == -1) return 0;
 
     assert(seq.front() == start_idx);
 
-    int last_pid = as<GenParticle>(particles->At(mom_idx))->PID;
-    assert(last_pid == target.back());
-
-    // walk back some number of steps to find the daughter of the decay
-    for (auto idx = seq.rbegin(); idx != seq.rend(); idx++) {
-      GenParticle* part = as<GenParticle>(particles->At(*idx));
-      int this_pid = part->PID;
-      bool ignored = ignored_pid.count(std::abs(this_pid));
-      if (!ignored) {
-	if (step_back == 0){
-	  return part;
-	}
-	// TODO: something is buggy here...
-	// if (major_quark(this_pid) == 5 || major_quark(last_pid) == 5)
-	  printf("steps: %d, this %d, last %d\n", step_back,
-					      this_pid, last_pid);
-	if (is_significant_shift(last_pid, this_pid)) {
-	  // decay_sequence.push_back(part);
-	  step_back--;
-	}
-	last_pid = this_pid;
-      }	// end maybe ignored particles
-
+    // grab every particle along the path
+    std::vector<GenParticle*> parts;
+    for (const auto& idx: seq) {
+      parts.push_back(as<GenParticle>(particles->At(idx)));
     }
-    return as<GenParticle>(particles->At(start_idx));
+    // remove `insignificant' decays
+    clean_particles(parts);
+
+    // check to see if particle we're asking for is out of range...
+    if (target.size() > parts.size() || step_back >= parts.size() ) {
+      return 0;
+    }
+    int pend = parts.size() - 1;
+    int tend = target.size() - 1;
+    for (int iii = 0; iii <= tend; iii++) {
+      int targ = target.at(tend - iii);
+      const auto& part = *parts.at(pend - iii);
+      if (is_significant_shift(targ, part.PID)) return 0;
+    }
+
+    return parts.at(pend - step_back);
   }
 
 
@@ -221,7 +247,7 @@ namespace truth {
     GenParticle* part = get_gen_particle(track);
     if (!part) return 0;
     for (int id: {part->M1, part->M2} ){
-      GenParticle* decay = get_parent_particle(
+      GenParticle* decay = get_chain(
 	particles, id, sequence, step_back);
       if (decay) return decay;
     }

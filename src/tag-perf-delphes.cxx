@@ -172,22 +172,58 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
   hists.initial_d0.fill(std::sqrt(ix*ix + iy*iy));
 }
 
+struct CLI
+{
+  std::string out_name;
+  std::string input;
+  int err_code;
+  void usage(std::string prname) {
+    std::cerr << "usage: " << prname << ": <input> [<output>]" << std::endl;
+  }
+  int read(int argc, char* argv[]) {
+    using namespace std;
+    if (argc == 1 || argc > 3) {
+      usage(argv[0]);
+      err_code = 1;
+      return err_code;
+    }
+
+    input = argv[1];
+    if (!exists(input)) {
+      cerr << input << " doesn't exist, exiting!" << endl;
+      err_code = 1;
+      return 1;
+    }
+
+    if (argc > 2) {
+      out_name = argv[2];
+    } else {
+      out_name = "test.h5";
+    }
+    if (exists(out_name)) {
+      cerr << out_name << " exists, exiting" << endl;
+      err_code = 1;
+      return err_code;
+    }
+    return 0;
+  }
+};
 
 // ____________________________________________________
 // main function
 
+
 int main(int argc, char *argv[])
 {
   gROOT->SetBatch();
-  std::string out_name("test.h5");
-  if (exists(out_name) ) {
-    std::cerr << out_name << " exists, exiting" << std::endl;
-    return 1;
-  }
+
+  CLI cli;
+  cli.read(argc, argv);
+  if (cli.err_code) return cli.err_code;
 
   // Create chain of root trees
   TChain chain("Delphes");
-  chain.Add(argv[1]);
+  chain.Add(cli.input.c_str());
 
   // Create object of class ExRootTreeReader
   ExRootTreeReader* treeReader = new ExRootTreeReader(&chain);
@@ -247,10 +283,10 @@ int main(int argc, char *argv[])
 	// get daughter of b from top (if there is one)
 	// TODO: figure out what's going on here.
 	//       Look in get_parent_particle for clues...
-	std::deque<int> t_seq{4, 5, 6};
-	std::deque<int> at_seq{-4, -5, -6};
-	GenParticle* b_daut = truth::get_parent(track, bPart, t_seq, 2);
-	GenParticle* ab_daut = truth::get_parent(track, bPart, at_seq, 2);
+	std::deque<int> seq{5, 25};
+	std::deque<int> aseq{-5, 25};
+	GenParticle* b_daut = truth::get_parent(track, bPart, seq, 1);
+	GenParticle* ab_daut = truth::get_parent(track, bPart, aseq, 1);
 	GenParticle* daut = b_daut ? b_daut : ab_daut;
 	if (daut){
 	  using std::pow;
@@ -286,7 +322,7 @@ int main(int argc, char *argv[])
       }
     } // end loop over jets
   }   // end loop over events
-  H5::H5File out_file(out_name, H5F_ACC_EXCL);
+  H5::H5File out_file(cli.out_name, H5F_ACC_EXCL);
   hists.save(out_file, "all_jets");
   b_jet_hists.save(out_file, "b_jets");
   light_jet_hists.save(out_file,"light_jets");

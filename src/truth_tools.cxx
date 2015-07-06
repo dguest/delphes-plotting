@@ -17,6 +17,7 @@ namespace {
   // we ignore `minor` particle changes
   bool is_significant_shift(int pid1, int pid2);
   int major_quark(int pid);
+  bool is_metastable_hadron_parent(int pid);
 
   TObject* walk_track(const Track* track, int& depth){
     if (!track) return 0;
@@ -171,6 +172,30 @@ namespace {
     return (major1 != major2);
   }
 
+  // get hadron number as q1q2q3
+  int hadron_number(int pid) {
+    int absid = std::abs(pid);
+    if (absid < 100) return 0;
+    return (absid / 10) % 1000;
+  }
+
+  // check for particle that decays to a weekly-decaying hadron
+  bool is_metastable_hadron_parent(int pid) {
+    int absid = std::abs(pid);
+    // all bare quarks below t should hadronize
+    if (absid <= 5) return true;
+
+    // hadron number is of the form q1q2q3
+    int had_number = hadron_number(absid);
+    if (had_number == 0) return false;
+
+    // things with high spin decay
+    int spin = absid % 10;
+    if (spin > 2) return true;
+    // anything left is a metastable hadron
+    return false;
+  }
+
   // remove `insignificant' particles from the decay chain. When two
   // particles differ insignificantly, the upstream one is removed.
   // Originally implemented as a list (thus the complexity).
@@ -184,7 +209,8 @@ namespace {
       const auto& part2 = **iter2;
       bool ignored = ignored_pid.count(part2.PID);
       bool insig = !is_significant_shift(part1.PID, part2.PID);
-      if (ignored || insig) {
+      bool had_parent = is_metastable_hadron_parent(part2.PID);
+      if (ignored || insig || had_parent) {
 	iter2 = parts.erase(iter2);
       } else {
 	iter2++;

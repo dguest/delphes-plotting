@@ -137,12 +137,12 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
   hists.particle_ip.fill(particle_ip);
   // }
 
-  float d0 = track->trkPar[TrackParam::D0];
+  float d0 = track->Dxy;
   hists.track_d0.fill(d0);
   float z0 = track->trkPar[TrackParam::Z0];
   hists.track_z0.fill(z0);
   {
-    float d0_particle = particle->trkPar[TrackParam::D0];
+    float d0_particle = particle->Dxy;
     // printf("d0 %f\n", d0_particle);
     hists.particle_d0.fill(d0_particle);
     float z0_particle = particle->trkPar[TrackParam::Z0];
@@ -212,6 +212,7 @@ int main(int argc, char *argv[])
   Hists light_jet_hists;
   Hists leading_track_b_hists;
   Hists leading_track_light_hists;
+  Hists d_decay_track_hists;
   std::map<int, int> b_decay_pids;
 
   // Loop over all events
@@ -255,9 +256,17 @@ int main(int argc, char *argv[])
 	  using std::pow;
 	  using std::sqrt;
 	  b_decay_pids[daut->PID]++;
-	  // std::cout << truth::map_particle(daut->PID) << " "
+	  fill_track_hists(d_decay_track_hists, track, jet);
+
+	  // === dump some debugging info ===
+	  // Track* particle = root::as<Track>(track->Particle.GetObject());
+	  // std::cout << "part " << truth::map_particle(daut->PID) << " "
 	  // 	    << daut->PID << " "
-	  // 	    << sqrt(pow(daut->X,2) + pow(daut->Y,2))
+	  // 	    << sqrt(pow(daut->X,2) + pow(daut->Y,2)) << " "
+	  // 	    << "part d0: " << particle->Dxy << " "
+	  // 	    << particle->trkPar[TrackParam::D0] << " "
+	  // 	    << "trk d0: " << track->Dxy << " "
+	  // 	    << track->trkPar[TrackParam::D0] << " "
 	  // 	    << std::endl;
 	}
 
@@ -283,6 +292,7 @@ int main(int argc, char *argv[])
   light_jet_hists.save(out_file,"light_jets");
   leading_track_light_hists.save(out_file, "leading_track_light");
   leading_track_b_hists.save(out_file, "leading_track_b");
+  d_decay_track_hists.save(out_file, "d_decay_track_hists");
 
   // dump list of most common particle decays
   std::vector<std::pair<int,int>> number_and_pid;

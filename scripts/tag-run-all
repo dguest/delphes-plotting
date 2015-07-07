@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+for ROOTFILE in *.root ; do
+    H5OUT=${ROOTFILE%.root}.h5
+    if [[ ! -f $H5OUT ]] ; then
+	echo "building $H5OUT"
+	tag-perf-delphes $ROOTFILE $H5OUT
+    fi
+    PLOTDIR=${ROOTFILE%.root}-plots
+    if [[ -d $PLOTDIR ]] ; then
+	rm -r $PLOTDIR
+    fi
+    echo "drawing in $PLOTDIR"
+    tag-draw-delphes $H5OUT $PLOTDIR
+done

@@ -115,8 +115,8 @@ double get_ip(const Track* track, const Jet* jet) {
   double jpy = jvec.Py();
 
   // signed impact parameter along jet axis
-  int sign = (jpx*xd + jpy*yd > 0.0) ? 1 : -1;
-  double ip = sign*d0;
+  double j_dot_d = jpx*xd + jpy*yd;
+  double ip = std::copysign(d0, j_dot_d);
   return ip;
 }
 

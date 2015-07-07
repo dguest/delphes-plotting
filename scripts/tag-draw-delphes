@@ -3,13 +3,23 @@
 import os, sys
 import numpy as np
 import h5py
+import argparse
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 # from matplotlib.ticker import FuncFormatter
 
+def _get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file')
+    parser.add_argument('output_dir', nargs='?', default='test.h5')
+    args = parser.parse_args()
+    return args
+
 def run():
-    h5f = h5py.File(sys.argv[1])
+    args = _get_args()
+    h5f = h5py.File(args.input_file)
+    ops = dict(output_dir=args.output_dir)
     all_jets = h5f['all_jets']
     b_jets = h5f['b_jets']
     light_jets = h5f['light_jets']
@@ -31,44 +41,45 @@ def run():
         ('raw light.', light_jets['particle_d0']),
         ('smeared light', light_jets['track_d0']),
     ]
-    _make_plot(d0_plots, 'd0_comp.pdf', 'd0', log=True)
-    _make_plot(three_flavor('track_pt'), 'track_pt.pdf', _pt, log=True)
+    _make_plot(d0_plots, 'd0_comp.pdf', 'd0', log=True, **ops)
+    _make_plot(three_flavor('track_pt'), 'track_pt.pdf', _pt, log=True, **ops)
 
     # z0_plots = [('raw',all_jets['particle_z0']), ('smeared', all_jets['track_z0'])]
-    # _make_plot(z0_plots, 'z0_comp.pdf', 'z0')
-    # _make_plot([('tracks per jet', all_jets['n_tracks'])], 'n_tracks.pdf', 'n trk')
+    # _make_plot(z0_plots, 'z0_comp.pdf', 'z0', **ops)
+    # _make_plot([('tracks per jet', all_jets['n_tracks'])], 'n_tracks.pdf', 'n trk', **ops)
 
-    # _make_plot(three_flavor('track_d0sig'), 'd0sig.pdf', 'd0 sig', log=True)
-    # _make_plot(three_flavor('track_ipsig'), 'ipsig.pdf', 'ip sig', log=True)
+    # _make_plot(three_flavor('track_d0sig'), 'd0sig.pdf', 'd0 sig', log=True, **ops)
+    # _make_plot(three_flavor('track_ipsig'), 'ipsig.pdf', 'ip sig', log=True, **ops)
     # _make_plot([
     #     ('track ip', b_jets['track_ip']),
     #     ('track d0', b_jets['track_d0'])],
-    #            'bjet_track_ipvsd0.pdf', 'disp')
+    #            'bjet_track_ipvsd0.pdf', 'disp', **ops)
     # _make_plot(three_flavor('track_jet_dr'), 'trackjetdr.pdf', '$\Delta R$',
-    #            log=True)
-    _make_plot(leading('track_ip'), 'leading_ip.pdf', 'IP')
-    _make_plot(leading('track_d0'), 'leading_d0.pdf', 'd0')
-    _make_plot(leading('track_pt'), 'leading_pt.pdf', _pt, log=True)
+    #            log=True, **ops)
+    _make_plot(leading('track_ip'), 'leading_ip.pdf', 'IP', **ops)
+    _make_plot(leading('track_d0'), 'leading_d0.pdf', 'd0', **ops)
+    _make_plot(leading('track_pt'), 'leading_pt.pdf', _pt, log=True, **ops)
     # _make_plot([
     #     ('leading', leading_light['track_pt']),
     #     ('all', light_jets['track_pt'])],
     #            'pt_leading_vs_all.pdf', _pt, log=True)
-    # _make_plot(three_flavor('initial_d0'), 'initial_d0.pdf', 'd0')
+    # _make_plot(three_flavor('initial_d0'), 'initial_d0.pdf', 'd0', **ops)
 
     _make_plot([
         ('track', matched['track_d0']),
         ('part', matched['particle_d0'])],
-               'matched_d0.pdf', xname='d0', log=True)
+               'matched_d0.pdf', xname='d0', log=True, **ops)
     _make_plot([
         ('matched track', matched['track_ipsig']),
         ('b jet', b_jets['track_ipsig'])],
-               'ipsig.pdf', xname='IP', log=True)
+               'ipsig.pdf', xname='IP', log=True, **ops)
 
 _pt = r'$p_{\rm T}$'
 _ax_size = 12
 _text_size = 12
 
-def _make_plot(names, outname, xname, log=False, outdir='plots', norm=False):
+def _make_plot(names, outname, xname, log=False, norm=False,
+               output_dir='plots'):
     """return the canvas with everything drawn on it"""
     y_lab = 'tracks'
 
@@ -98,9 +109,9 @@ def _make_plot(names, outname, xname, log=False, outdir='plots', norm=False):
         ax.set_ylim(0.01 if norm else 1, ax.get_ylim()[1])
         ax.set_yscale('log')
     ax.legend(framealpha=0, prop=dict(size=_text_size))
-    if not os.path.isdir(outdir):
-        os.mkdir(outdir)
-    canvas.print_figure(os.path.join(outdir,outname), bbox_inches='tight')
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+    canvas.print_figure(os.path.join(output_dir,outname), bbox_inches='tight')
 
 if __name__ == '__main__':
     run()

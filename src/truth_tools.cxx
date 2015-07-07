@@ -247,7 +247,10 @@ namespace {
     for (int iii = 0; iii <= tend; iii++) {
       int targ = target.at(tend - iii);
       const auto& part = *parts.at(pend - iii);
-      if (is_significant_shift(targ, part.PID)) return 0;
+      bool sig_shift = is_significant_shift(targ, part.PID);
+      bool wrong_sign = std::signbit(targ) != std::signbit(part.PID);
+      // bool wrong_sign = false;
+      if (sig_shift || wrong_sign) return 0;
     }
 
     return parts.at(pend - step_back);

@@ -15,7 +15,7 @@ def run():
     light_jets = h5f['light_jets']
     leading_b = h5f['leading_track_b']
     leading_light = h5f['leading_track_light']
-    d_decay = h5f['d_decay_track_hists']
+    matched = h5f['matched_track_hists']
     def three_flavor(variable):
         legs = [x.format(variable) for x in ['all {}', 'b {}', 'light {}']]
         datasets = [x[variable] for x in [all_jets, b_jets, light_jets]]
@@ -56,11 +56,11 @@ def run():
     # _make_plot(three_flavor('initial_d0'), 'initial_d0.pdf', 'd0')
 
     _make_plot([
-        ('track', d_decay['track_d0']),
-        ('part', d_decay['particle_d0'])],
-               'd_decay_d0.pdf', xname='d0', log=True)
+        ('track', matched['track_d0']),
+        ('part', matched['particle_d0'])],
+               'matched_d0.pdf', xname='d0', log=True)
     _make_plot([
-        ('D decay', d_decay['track_ipsig']),
+        ('matched track', matched['track_ipsig']),
         ('b jet', b_jets['track_ipsig'])],
                'ipsig.pdf', xname='IP', log=True)
 
@@ -94,6 +94,7 @@ def _make_plot(names, outname, xname, log=False, outdir='plots', norm=False):
     ax.set_ylabel(y_lab, y=0.98, ha='right', size=_ax_size)
     ax.set_xlim(*extent)
     if log:
+        ax.grid(which='both', alpha=0.05, ls='-')
         ax.set_ylim(0.01 if norm else 1, ax.get_ylim()[1])
         ax.set_yscale('log')
     ax.legend(framealpha=0, prop=dict(size=_text_size))

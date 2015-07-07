@@ -54,24 +54,24 @@ struct Hists {
 
 const unsigned MAX_TRACKS = 200;
 const unsigned MAX_JETS = 20;
-const float D0RNG = 0.1;
-const float Z0RNG = 0.1;
+const float D0_RANGE = 1.0;
+const float Z0_RANGE = 2.0;
 
 Hists::Hists():
   n_tracks(MAX_TRACKS, -0.5, MAX_TRACKS + 0.5),
   n_jets(MAX_JETS, -0.5, MAX_JETS + 0.5),
   track_jet_dr(200, 0, 5),
   track_pt(200, 0, 200, "GeV"),
-  track_d0(100, -D0RNG, D0RNG, "mm"),
-  track_ip(100, -D0RNG, D0RNG, "mm"),
-  particle_d0(100, -D0RNG, D0RNG, "mm"),
-  particle_ip(100, -D0RNG, D0RNG, "mm"),
-  track_z0(100, -Z0RNG, Z0RNG, "mm"),
-  particle_z0(100, -Z0RNG, Z0RNG, "mm"),
+  track_d0(100, -D0_RANGE, D0_RANGE, "mm"),
+  track_ip(100, -D0_RANGE, D0_RANGE, "mm"),
+  particle_d0(100, -D0_RANGE, D0_RANGE, "mm"),
+  particle_ip(100, -D0_RANGE, D0_RANGE, "mm"),
+  track_z0(100, -Z0_RANGE, Z0_RANGE, "mm"),
+  particle_z0(100, -Z0_RANGE, Z0_RANGE, "mm"),
   track_d0sig(1000, -30, 30, ""),
   track_z0sig(1000, -30, 30, ""),
   track_ipsig(1000, -30, 30, ""),
-  initial_d0(1000, -D0RNG / 100, D0RNG / 10, "mm")
+  initial_d0(1000, -D0_RANGE / 100, D0_RANGE / 10, "mm")
 {
 }
 void Hists::save(std::string output) {
@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
   Hists light_jet_hists;
   Hists leading_track_b_hists;
   Hists leading_track_light_hists;
-  Hists d_decay_track_hists;
+  Hists matched_track_hists;
   std::map<int, int> b_decay_pids;
 
   // Loop over all events
@@ -280,30 +280,38 @@ int main(int argc, char *argv[])
 	n_tracks++;
 	track_by_pt[track->PT] = track;
 
-	// get daughter of b from top (if there is one)
-	// TODO: figure out what's going on here.
-	//       Look in get_parent_particle for clues...
-	std::deque<int> seq{5, 25};
-	std::deque<int> aseq{-5, 25};
-	GenParticle* b_daut = truth::get_parent(track, bPart, seq, 1);
-	GenParticle* ab_daut = truth::get_parent(track, bPart, aseq, 1);
-	GenParticle* daut = b_daut ? b_daut : ab_daut;
-	if (daut){
+	// walk truth record, see if this track comes from something
+	// interesting
+	std::vector<std::deque<int> > sequences = {
+	  {5, 6}, {-5, -6},
+	  {5, -6}, {-5, 6}, 	// how does this happen?
+	  {5, 25}, {-5, 25} };
+	std::vector<GenParticle*> daughters;
+	for (const auto& seq: sequences) {
+	  auto daut = truth::get_parent(track, bPart, seq, 2);
+	  if (daut) daughters.push_back(daut);
+	}
+	if (daughters.size() == 1){
+	  const auto* daut = daughters.back();
 	  using std::pow;
 	  using std::sqrt;
 	  b_decay_pids[daut->PID]++;
-	  fill_track_hists(d_decay_track_hists, track, jet);
-
+	  fill_track_hists(matched_track_hists, track, jet);
+	} else if (daughters.size() > 1) {
+	  Track* particle = root::as<Track>(track->Particle.GetObject());
+	  std::cout << "found multiple matches for particle "
+	  	    << "part d0: " << particle->Dxy << " "
+	  	    << particle->trkPar[TrackParam::D0] << " "
+	  	    << "trk d0: " << track->Dxy << " "
+	  	    << track->trkPar[TrackParam::D0] << " "
+		    << std::endl;
+	  for (const auto* daut: daughters) {
 	  // === dump some debugging info ===
-	  // Track* particle = root::as<Track>(track->Particle.GetObject());
-	  // std::cout << "part " << truth::map_particle(daut->PID) << " "
-	  // 	    << daut->PID << " "
-	  // 	    << sqrt(pow(daut->X,2) + pow(daut->Y,2)) << " "
-	  // 	    << "part d0: " << particle->Dxy << " "
-	  // 	    << particle->trkPar[TrackParam::D0] << " "
-	  // 	    << "trk d0: " << track->Dxy << " "
-	  // 	    << track->trkPar[TrackParam::D0] << " "
-	  // 	    << std::endl;
+	  std::cout << "part " << truth::map_particle(daut->PID) << " "
+	  	    << daut->PID << " "
+	  	    << sqrt(pow(daut->X,2) + pow(daut->Y,2)) << " "
+	  	    << std::endl;
+	  }
 	}
 
 	// fill hists
@@ -328,7 +336,7 @@ int main(int argc, char *argv[])
   light_jet_hists.save(out_file,"light_jets");
   leading_track_light_hists.save(out_file, "leading_track_light");
   leading_track_b_hists.save(out_file, "leading_track_b");
-  d_decay_track_hists.save(out_file, "d_decay_track_hists");
+  matched_track_hists.save(out_file, "matched_track_hists");
 
   // dump list of most common particle decays
   std::vector<std::pair<int,int>> number_and_pid;

@@ -71,7 +71,7 @@ Hists::Hists():
   track_d0sig(1000, -30, 30, ""),
   track_z0sig(1000, -30, 30, ""),
   track_ipsig(1000, -30, 30, ""),
-  initial_d0(1000, -D0_RANGE / 100, D0_RANGE / 10, "mm")
+  initial_d0(1000, -D0_RANGE, D0_RANGE, "mm")
 {
 }
 void Hists::save(std::string output) {

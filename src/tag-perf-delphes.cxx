@@ -168,7 +168,7 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
   double ix = gen->X;
   double iy = gen->Y;
   // std::cout << ix << " " << iy << " " << gen->PID << " "
-  // 	    <<  " mothers " << gen->M1 << " " << gen->M2 <<std::endl;
+  //        <<  " mothers " << gen->M1 << " " << gen->M2 <<std::endl;
   hists.initial_d0.fill(std::sqrt(ix*ix + iy*iy));
 }
 
@@ -274,59 +274,59 @@ int main(int argc, char *argv[])
       // if (b_label) puts("new b-jet");
       // else puts("light jet");
       for (int iii = 0; iii < n_constituents; iii++) {
-	TObject* obj = jet->Constituents.At(iii);
-	if (!root::is<Track>(obj)) continue;
-	auto* track = root::as<Track>(obj);
-	n_tracks++;
-	track_by_pt[track->PT] = track;
+        TObject* obj = jet->Constituents.At(iii);
+        if (!root::is<Track>(obj)) continue;
+        auto* track = root::as<Track>(obj);
+        n_tracks++;
+        track_by_pt[track->PT] = track;
 
-	// walk truth record, see if this track comes from something
-	// interesting
-	std::vector<std::deque<int> > sequences = {
-	  {5, 6}, {-5, -6},
-	  {5, -6}, {-5, 6}, 	// how does this happen?
-	  {5, 25}, {-5, 25} };
-	std::vector<GenParticle*> daughters;
-	for (const auto& seq: sequences) {
-	  auto daut = truth::get_parent(track, bPart, seq, 2);
-	  if (daut) daughters.push_back(daut);
-	}
-	if (daughters.size() == 1){
-	  const auto* daut = daughters.back();
-	  using std::pow;
-	  using std::sqrt;
-	  b_decay_pids[daut->PID]++;
-	  fill_track_hists(matched_track_hists, track, jet);
-	} else if (daughters.size() > 1) {
-	  Track* particle = root::as<Track>(track->Particle.GetObject());
-	  std::cout << "found multiple matches for particle "
-	  	    << "part d0: " << particle->Dxy << " "
-	  	    << particle->trkPar[TrackParam::D0] << " "
-	  	    << "trk d0: " << track->Dxy << " "
-	  	    << track->trkPar[TrackParam::D0] << " "
-		    << std::endl;
-	  for (const auto* daut: daughters) {
-	  // === dump some debugging info ===
-	  std::cout << "part " << truth::map_particle(daut->PID) << " "
-	  	    << daut->PID << " "
-	  	    << sqrt(pow(daut->X,2) + pow(daut->Y,2)) << " "
-	  	    << std::endl;
-	  }
-	}
+        // walk truth record, see if this track comes from something
+        // interesting
+        std::vector<std::deque<int> > sequences = {
+          {5, 6}, {-5, -6},
+          {5, -6}, {-5, 6},     // how does this happen?
+          {5, 25}, {-5, 25} };
+        std::vector<GenParticle*> daughters;
+        for (const auto& seq: sequences) {
+          auto daut = truth::get_parent(track, bPart, seq, 2);
+          if (daut) daughters.push_back(daut);
+        }
+        if (daughters.size() == 1){
+          const auto* daut = daughters.back();
+          using std::pow;
+          using std::sqrt;
+          b_decay_pids[daut->PID]++;
+          fill_track_hists(matched_track_hists, track, jet);
+        } else if (daughters.size() > 1) {
+          Track* particle = root::as<Track>(track->Particle.GetObject());
+          std::cout << "found multiple matches for particle "
+                    << "part d0: " << particle->Dxy << " "
+                    << particle->trkPar[TrackParam::D0] << " "
+                    << "trk d0: " << track->Dxy << " "
+                    << track->trkPar[TrackParam::D0] << " "
+                    << std::endl;
+          for (const auto* daut: daughters) {
+          // === dump some debugging info ===
+          std::cout << "part " << truth::map_particle(daut->PID) << " "
+                    << daut->PID << " "
+                    << sqrt(pow(daut->X,2) + pow(daut->Y,2)) << " "
+                    << std::endl;
+          }
+        }
 
-	// fill hists
-	fill_track_hists(hists, track, jet);
-	if (b_label) {
-	  fill_track_hists(b_jet_hists, track, jet);
-	} else {
-	  fill_track_hists(light_jet_hists, track, jet);
-	}
-      }	// end loop over jet tracks
+        // fill hists
+        fill_track_hists(hists, track, jet);
+        if (b_label) {
+          fill_track_hists(b_jet_hists, track, jet);
+        } else {
+          fill_track_hists(light_jet_hists, track, jet);
+        }
+      } // end loop over jet tracks
       hists.n_tracks.fill(n_tracks);
       if (track_by_pt.size() > 0) {
-      	const auto* track = track_by_pt.crbegin()->second;
-      	if (b_label) fill_track_hists(leading_track_b_hists, track, jet);
-      	else fill_track_hists(leading_track_light_hists, track, jet);
+        const auto* track = track_by_pt.crbegin()->second;
+        if (b_label) fill_track_hists(leading_track_b_hists, track, jet);
+        else fill_track_hists(leading_track_light_hists, track, jet);
       }
     } // end loop over jets
   }   // end loop over events
@@ -346,7 +346,7 @@ int main(int argc, char *argv[])
   std::sort(number_and_pid.begin(), number_and_pid.end());
   for (const auto& itr: number_and_pid) {
     printf("%s, num: %i\n",
-	   truth::map_particle(itr.second).c_str(), itr.first);
+           truth::map_particle(itr.second).c_str(), itr.first);
   }
   return 0;
 

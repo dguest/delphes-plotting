@@ -30,6 +30,7 @@ namespace bit {
   const unsigned B_TAG = 1 << 0;
   const unsigned B_FLAVOR = 1 << 1;
 }
+const double pi = std::atan2(0, -1);
 
 struct Hists {
   Hists();
@@ -50,6 +51,9 @@ struct Hists {
   Histogram track_z0sig;
   Histogram track_ipsig;
   Histogram initial_d0;
+  Histogram track_d0phi;
+  Histogram track_d0_dphi;
+  Histogram jet_d0_dphi;
 };
 
 const unsigned MAX_TRACKS = 200;
@@ -71,7 +75,10 @@ Hists::Hists():
   track_d0sig(1000, -30, 30, ""),
   track_z0sig(1000, -30, 30, ""),
   track_ipsig(1000, -30, 30, ""),
-  initial_d0(1000, -D0_RANGE, D0_RANGE, "mm")
+  initial_d0(1000, -D0_RANGE, D0_RANGE, "mm"),
+  track_d0phi(1000, -pi, pi),
+  track_d0_dphi(1000, -pi, pi),
+  jet_d0_dphi(1000, -pi, pi)
 {
 }
 void Hists::save(std::string output) {
@@ -94,6 +101,9 @@ void Hists::save(H5::CommonFG& out_h5) {
   WRITE(track_z0sig);
   WRITE(track_ipsig);
   WRITE(initial_d0);
+  WRITE(track_d0phi);
+  WRITE(jet_d0_dphi);
+  WRITE(track_d0_dphi);
 #undef WRITE
 }
 void Hists::save(H5::CommonFG& out_file, const std::string& name) {
@@ -171,6 +181,18 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
   // std::cout << ix << " " << iy << " " << gen->PID << " "
   //        <<  " mothers " << gen->M1 << " " << gen->M2 <<std::endl;
   hists.initial_d0.fill(std::sqrt(ix*ix + iy*iy));
+  hists.track_d0phi.fill(std::atan2(track->Y, track->X));
+  {
+    double xd = track->Xd;
+    double yd = track->Yd;
+    TLorentzVector d0vec(xd, yd, 0, 0);
+    // printf("xd:  %f, yd: %f ", xd, yd);
+    // printf("trx: %f, try: %f\n", trackvec.Px(), trackvec.Py());
+    if (!std::isnan(xd) && !std::isnan(yd)) {
+      hists.track_d0_dphi.fill(trackvec.DeltaPhi(d0vec));
+      hists.jet_d0_dphi.fill(jvec.DeltaPhi(d0vec));
+    }
+  }
 }
 
 struct CLI

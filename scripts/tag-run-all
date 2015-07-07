@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -eu
+
 for ROOTFILE in *.root ; do
     H5OUT=${ROOTFILE%.root}.h5
     if [[ ! -f $H5OUT ]] ; then

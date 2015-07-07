@@ -49,16 +49,17 @@ def run():
     # _make_plot([('tracks per jet', all_jets['n_tracks'])], 'n_tracks.pdf', 'n trk', **ops)
 
     # _make_plot(three_flavor('track_d0sig'), 'd0sig.pdf', 'd0 sig', log=True, **ops)
-    # _make_plot(three_flavor('track_ipsig'), 'ipsig.pdf', 'ip sig', log=True, **ops)
+    _make_plot(three_flavor('track_ipsig'), 'ipsig.pdf', 'ip sig', log=True, **ops)
+    _make_plot(three_flavor('track_ip'), 'ip.pdf', 'ip', log=True, **ops)
     # _make_plot([
     #     ('track ip', b_jets['track_ip']),
     #     ('track d0', b_jets['track_d0'])],
     #            'bjet_track_ipvsd0.pdf', 'disp', **ops)
-    # _make_plot(three_flavor('track_jet_dr'), 'trackjetdr.pdf', '$\Delta R$',
-    #            log=True, **ops)
-    _make_plot(leading('track_ip'), 'leading_ip.pdf', 'IP', **ops)
-    _make_plot(leading('track_d0'), 'leading_d0.pdf', 'd0', **ops)
-    _make_plot(leading('track_pt'), 'leading_pt.pdf', _pt, log=True, **ops)
+    _make_plot(three_flavor('track_jet_dr'), 'trackjetdr.pdf', '$\Delta R$',
+               log=True, **ops)
+    # _make_plot(leading('track_ip'), 'leading_ip.pdf', 'IP', **ops)
+    # _make_plot(leading('track_d0'), 'leading_d0.pdf', 'd0', **ops)
+    # _make_plot(leading('track_pt'), 'leading_pt.pdf', _pt, log=True, **ops)
     # _make_plot([
     #     ('leading', leading_light['track_pt']),
     #     ('all', light_jets['track_pt'])],
@@ -71,8 +72,9 @@ def run():
                'matched_d0.pdf', xname='d0', log=True, **ops)
     _make_plot([
         ('matched track', matched['track_ipsig']),
-        ('b jet', b_jets['track_ipsig'])],
-               'ipsig.pdf', xname='IP', log=True, **ops)
+        ('b jet', b_jets['track_ipsig']),
+        ('all jets', all_jets['track_ipsig'])],
+               'matched_ipsig.pdf', xname='IP', log=True, **ops)
 
 _pt = r'$p_{\rm T}$'
 _ax_size = 12

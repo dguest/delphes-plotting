@@ -116,6 +116,7 @@ double get_ip(const Track* track, const Jet* jet) {
 
   // signed impact parameter along jet axis
   double j_dot_d = jpx*xd + jpy*yd;
+  // int sign = (j_dot_d > 0) ? 1 : -1;
   double ip = std::copysign(d0, j_dot_d);
   return ip;
 }

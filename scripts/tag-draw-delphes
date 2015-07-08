@@ -16,6 +16,11 @@ def _get_args():
     args = parser.parse_args()
     return args
 
+_alias = dict(st=r'\sqrt{\sin \theta}')
+_ptdef = {'low': r'$0.4 < p_{{\rm T}} {st} < 0.5$'.format(**_alias),
+          'high': r'$p_{{\rm T}} {st} > 20$ GeV'.format(**_alias)}
+
+
 def run():
     args = _get_args()
     ops = dict(output_dir=args.output_dir)
@@ -30,6 +35,7 @@ def run():
     leading_b = h5f['leading_track_b']
     leading_light = h5f['leading_track_light']
     matched = h5f['matched_track_hists']
+    pt = {x:h5f[x + '_pt_tracks'] for x in ['low', 'high']}
     def three_flavor(variable):
         legs = [x.format(variable) for x in ['all {}', 'b {}', 'light {}']]
         datasets = [x[variable] for x in [all_jets, b_jets, light_jets]]
@@ -46,7 +52,13 @@ def run():
         ('smeared light', light_jets['track_d0']),
     ]
     _make_plot(d0_plots, 'd0_comp.pdf', 'd0', **lops)
-    _make_plot(d0_plots, 'd0_comp_close.pdf', 'd0', xlims=(-0.1,0.1),**lops)
+    clops = lops.copy()
+    close = (-0.1, 0.1)
+    clops['xlims'] = close
+    _make_plot(d0_plots, 'd0_comp_close.pdf', 'd0', **clops)
+    _make_plot(
+        [(_ptdef[x], y['smear_d0']) for x,y in pt.items()], 'd0_pt.pdf',
+        'd0 smearing', xlims=close, **ops)
     _make_plot(three_flavor('track_pt'), 'track_pt.pdf', _pt, log=True, **ops)
 
     _make_plot(three_flavor('track_ipsig'), 'ipsig.pdf', 'ip sig', **lops)

@@ -22,9 +22,9 @@
 #include "H5Cpp.h"
 #include "Histogram.hh"
 
-// === define constants (mostly commented out) ===
-// const double GeV = 1;
-// const double MeV = 0.001;
+// === define constants ===
+const double GeV = 1;
+const double MeV = 0.001;
 
 // b-tagging bits
 namespace bit {
@@ -57,6 +57,7 @@ struct Hists {
   Histogram track_d0phi;
   Histogram track_d0_dphi;
   Histogram jet_d0_dphi;
+  Histogram smear_d0;
 };
 
 const unsigned MAX_TRACKS = 200;
@@ -81,7 +82,8 @@ Hists::Hists():
   initial_d0(1000, -D0_RANGE, D0_RANGE, "mm"),
   track_d0phi(1000, -pi, pi),
   track_d0_dphi(1000, -pi, pi),
-  jet_d0_dphi(1000, -pi, pi)
+  jet_d0_dphi(1000, -pi, pi),
+  smear_d0(1000, -D0_RANGE, D0_RANGE, "mm")
 {
 }
 void Hists::save(std::string output) {
@@ -107,6 +109,7 @@ void Hists::save(H5::CommonFG& out_h5) {
   WRITE(track_d0phi);
   WRITE(jet_d0_dphi);
   WRITE(track_d0_dphi);
+  WRITE(smear_d0);
 #undef WRITE
 }
 void Hists::save(H5::CommonFG& out_file, const std::string& name) {
@@ -163,6 +166,7 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
     hists.particle_d0.fill(d0_particle);
     float z0_particle = particle->trkPar[TrackParam::Z0];
     hists.particle_z0.fill(z0_particle);
+    hists.smear_d0.fill(d0 - d0_particle);
   }
   float d0_cov = track->trkCov[TrackParam::D0D0];
   if (d0_cov > 0) {
@@ -279,6 +283,8 @@ int main(int argc, char *argv[])
   Hists leading_track_b_hists;
   Hists leading_track_light_hists;
   Hists matched_track_hists;
+  Hists high_pt_tracks;
+  Hists low_pt_tracks;
   std::map<int, int> b_decay_pids;
 
   // Loop over all events
@@ -351,6 +357,16 @@ int main(int argc, char *argv[])
         } else {
           fill_track_hists(light_jet_hists, track, jet);
         }
+
+	// low and high pt tracks for comp to
+	// ATLAS-CONF-2014-047
+	double track_theta = track->trkPar[TrackParam::THETA];
+	double trk_eff_pt = track->PT * std::sqrt(track_theta);
+	if (400*MeV < trk_eff_pt && trk_eff_pt < 500*MeV) {
+	  fill_track_hists(low_pt_tracks, track, jet);
+	} else if (track->PT > 20*GeV) {
+	  fill_track_hists(high_pt_tracks, track, jet);
+	}
       } // end loop over jet tracks
       hists.n_tracks.fill(n_tracks);
       if (track_by_pt.size() > 0) {
@@ -367,6 +383,8 @@ int main(int argc, char *argv[])
   leading_track_light_hists.save(out_file, "leading_track_light");
   leading_track_b_hists.save(out_file, "leading_track_b");
   matched_track_hists.save(out_file, "matched_track_hists");
+  high_pt_tracks.save(out_file, "high_pt_tracks");
+  low_pt_tracks.save(out_file, "low_pt_tracks");
 
   // dump list of most common particle decays
   std::vector<std::pair<int,int>> number_and_pid;

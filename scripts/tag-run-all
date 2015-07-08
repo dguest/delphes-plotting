@@ -2,16 +2,75 @@
 
 set -eu
 
-for ROOTFILE in *.root ; do
-    H5OUT=${ROOTFILE%.root}.h5
-    if [[ ! -f $H5OUT ]] ; then
-	echo "building $H5OUT"
-	tag-perf-delphes $ROOTFILE $H5OUT
+_usage() {
+    echo "${0##*/} [-hfc] <root file>..."
+}
+_help() {
+    _usage
+    cat <<EOF
+Run all the tagging stuff. With no arguments runs on all the local root
+files. Otherwise takes a list of root files.
+
+Options:
+ -h: get help
+ -f: Force. Remove outputs and remake them.
+ -c: clean out output, then quit.
+
+EOF
+}
+
+_run() {
+    local FORCE=''
+    local opt
+    while getopts "hfc" opt $@; do
+	case $opt in
+	    h) _help; return 1;;
+	    f) FORCE=1 ;;
+	    c) _clean; return 0 ;;
+	esac
+    done
+    if [[ ${VARNAME-} == ? ]] ; then
+	echo "error, exiting..." >&2
+	return 1
     fi
-    PLOTDIR=${ROOTFILE%.root}-plots
-    if [[ -d $PLOTDIR ]] ; then
-	rm -r $PLOTDIR
+
+    ROOTFILES=( $@ )
+    if [[ ${#ROOTFILES[*]} == 0 ]] ; then
+	ROOTFILES=( *.root )
     fi
-    echo "drawing in $PLOTDIR"
-    tag-draw-delphes $H5OUT $PLOTDIR
-done
+    if [[ ${#ROOTFILES[*]} == 0 ]] ; then
+	echo "no files given!" >&2
+    fi
+    echo ${ROOTFILES[*]}
+
+    local ROOTFILE
+    for ROOTFILE in ${ROOTFILES[*]} ; do
+	H5OUT=${ROOTFILE%.root}.h5
+	PLOTDIR=${ROOTFILE%.root}-plots
+	if [[ $FORCE ]] ; then
+	    rm -rf $PLOTDIR $H5OUT
+	fi
+	if [[ ! -f $H5OUT ]] ; then
+	    echo "building $H5OUT"
+	    tag-perf-delphes $ROOTFILE $H5OUT
+	fi
+	if [[ ! -d $PLOTDIR ]] ; then
+	    echo "drawing in $PLOTDIR"
+	    tag-draw-delphes $H5OUT $PLOTDIR
+	fi
+    done
+}
+
+_clean() {
+    rm -f *.h5
+    local dir
+    local pldir=(*-plots)
+    for dir in ${pldir[@]} ; do
+	if [[ -d $dir ]] ; then
+	    find $dir -name '*.pdf' -delete
+	    rmdir $dir
+	fi
+    done
+}
+
+_run $@

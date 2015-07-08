@@ -22,15 +22,18 @@
 #include "H5Cpp.h"
 #include "Histogram.hh"
 
-const double GeV = 1;
-const double MeV = 0.001;
+// === define constants (mostly commented out) ===
+// const double GeV = 1;
+// const double MeV = 0.001;
 
 // b-tagging bits
 namespace bit {
-  const unsigned B_TAG = 1 << 0;
+  // const unsigned B_TAG = 1 << 0;
   const unsigned B_FLAVOR = 1 << 1;
 }
 const double pi = std::atan2(0, -1);
+
+// === list of histograms ===
 
 struct Hists {
   Hists();
@@ -66,10 +69,10 @@ Hists::Hists():
   n_jets(MAX_JETS, -0.5, MAX_JETS + 0.5),
   track_jet_dr(200, 0, 5),
   track_pt(200, 0, 200, "GeV"),
-  track_d0(100, -D0_RANGE, D0_RANGE, "mm"),
-  track_ip(100, -D0_RANGE, D0_RANGE, "mm"),
-  particle_d0(100, -D0_RANGE, D0_RANGE, "mm"),
-  particle_ip(100, -D0_RANGE, D0_RANGE, "mm"),
+  track_d0(1000, -D0_RANGE, D0_RANGE, "mm"),
+  track_ip(1000, -D0_RANGE, D0_RANGE, "mm"),
+  particle_d0(1000, -D0_RANGE, D0_RANGE, "mm"),
+  particle_ip(1000, -D0_RANGE, D0_RANGE, "mm"),
   track_z0(100, -Z0_RANGE, Z0_RANGE, "mm"),
   particle_z0(100, -Z0_RANGE, Z0_RANGE, "mm"),
   track_d0sig(1000, -30, 30, ""),
@@ -110,6 +113,8 @@ void Hists::save(H5::CommonFG& out_file, const std::string& name) {
   H5::Group group(out_file.createGroup(name));
   save(group);
 }
+
+// === misc utility functions ===
 
 double get_ip(const Track* track, const Jet* jet) {
   // took this form the TrackCountingBTagging module
@@ -194,6 +199,8 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
     }
   }
 }
+
+// === command line interface ===
 
 struct CLI
 {
@@ -289,7 +296,7 @@ int main(int argc, char *argv[])
       int n_constituents = jet->Constituents.GetEntriesFast();
 
       bool b_label = (jet->BTag & bit::B_FLAVOR);
-      bool b_tag = (jet->BTag & bit::B_TAG);
+      // bool b_tag = (jet->BTag & bit::B_TAG);
 
       // loop over all the tracks
       int n_tracks = 0;

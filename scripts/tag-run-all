@@ -21,16 +21,21 @@ EOF
 
 _run() {
     local FORCE=''
+    local CLEAN=''
     local opt
     while getopts "hfc" opt $@; do
 	case $opt in
 	    h) _help; return 1;;
 	    f) FORCE=1 ;;
-	    c) _clean; return 0 ;;
+	    c) CLEAN=1 ;;
 	esac
     done
     if [[ ${VARNAME-} == ? ]] ; then
 	echo "error, exiting..." >&2
+	return 1
+    fi
+    if [[ $CLEAN ]] ; then
+	_clean
 	return 1
     fi
 

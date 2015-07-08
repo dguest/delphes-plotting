@@ -19,6 +19,8 @@ def _get_args():
 def run():
     args = _get_args()
     ops = dict(output_dir=args.output_dir)
+    lops = ops.copy()
+    lops['log'] = True
 
     h5f = h5py.File(args.input_file)
 
@@ -43,10 +45,11 @@ def run():
         ('raw light.', light_jets['particle_d0']),
         ('smeared light', light_jets['track_d0']),
     ]
-    _make_plot(d0_plots, 'd0_comp.pdf', 'd0', log=True, **ops)
+    _make_plot(d0_plots, 'd0_comp.pdf', 'd0', **lops)
+    _make_plot(d0_plots, 'd0_comp_close.pdf', 'd0', xlims=(-0.1,0.1),**lops)
     _make_plot(three_flavor('track_pt'), 'track_pt.pdf', _pt, log=True, **ops)
 
-    _make_plot(three_flavor('track_ipsig'), 'ipsig.pdf', 'ip sig', log=True, **ops)
+    _make_plot(three_flavor('track_ipsig'), 'ipsig.pdf', 'ip sig', **lops)
     _make_plot(three_flavor('track_ip'), 'ip.pdf', 'ip', log=True, **ops)
     _make_plot(three_flavor('n_tracks'), 'n_tracks.pdf', 'n tracks', **ops)
     _make_plot(three_flavor('n_jets'), 'n_jets.pdf', 'n jets', **ops)
@@ -84,7 +87,7 @@ _ax_size = 12
 _text_size = 12
 
 def _make_plot(names, outname, xname, log=False, norm=False,
-               output_dir='plots'):
+               output_dir='plots', **kwargs):
     """return the canvas with everything drawn on it"""
     y_lab = 'tracks'
 
@@ -108,7 +111,7 @@ def _make_plot(names, outname, xname, log=False, norm=False,
     xlab = '{} [{}]'.format(xname, units.pop())
     ax.set_xlabel(xlab, x=0.98, ha='right', size=_ax_size)
     ax.set_ylabel(y_lab, y=0.98, ha='right', size=_ax_size)
-    ax.set_xlim(*extent)
+    ax.set_xlim(*kwargs.get('xlims',extent))
     if log:
         ax.grid(which='both', alpha=0.05, ls='-')
         ax.set_ylim(0.01 if norm else 1, ax.get_ylim()[1])

@@ -60,14 +60,14 @@ struct Hists {
   Histogram smear_d0;
 };
 
-const unsigned MAX_TRACKS = 200;
+const unsigned MAX_TRACKS = 50;
 const unsigned MAX_JETS = 20;
 const float D0_RANGE = 1.0;
 const float Z0_RANGE = 2.0;
 
 Hists::Hists():
-  n_tracks(MAX_TRACKS, -0.5, MAX_TRACKS + 0.5),
-  n_jets(MAX_JETS, -0.5, MAX_JETS + 0.5),
+  n_tracks(MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5),
+  n_jets(MAX_JETS + 1, -0.5, MAX_JETS + 0.5),
   track_jet_dr(200, 0, 5),
   track_pt(200, 0, 200, "GeV"),
   track_d0(1000, -D0_RANGE, D0_RANGE, "mm"),

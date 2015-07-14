@@ -13,6 +13,8 @@ def _get_args():
     parser.add_argument('input')
     parser.add_argument('-b', '--bins', help='only dump numbers',
                         action='store_true')
+    parser.add_argument('-t', '--titles', help='dump titles',
+                        action='store_true')
     return parser.parse_args()
 
 def _cov_as_list(cov_matrix):
@@ -44,11 +46,22 @@ def _dump_bins(root_file):
         print('pt bin {}, eta: {}'.format(
             ptbin, ', '.join(sorted(pt_bins[ptbin]))))
 
+def _dump_titles(root_file):
+    pt_bins = {}
+    for key in ROOT.TIter(rfile.GetListOfKeys()):
+        cov_match = covre.match(key.GetName())
+        if cov_match:
+            title = key.ReadObj().GetTitle()
+            print(key.GetName(), title)
+
 if __name__ == '__main__':
     args = _get_args()
     rfile = ROOT.TFile(args.input, "read")
     if args.bins:
         _dump_bins(rfile)
+        sys.exit()
+    if args.titles:
+        _dump_titles(rfile)
         sys.exit()
     cov_dict = {}
     for key in ROOT.TIter(rfile.GetListOfKeys()):

@@ -41,7 +41,7 @@ def run():
     args = _get_args()
     with open(args.input_file, 'r') as jfile:
         cov_pars = _int_keys(json.load(jfile))
-    _print_cor_matrix(cov_pars, 0, 0, output_dir=args.output_dir)
+    _print_cor_matrix(cov_pars, 2, 2, output_dir=args.output_dir)
     for par in [_trkpar.d0, _trkpar.z0, _trkpar.phi, _trkpar.theta, _trkpar.qoverp]:
         cov = _get_par_eta_vs_pt(cov_pars, par)
         _print_par_eta_vs_pt(cov, output_dir=args.output_dir,
@@ -78,7 +78,7 @@ def _print_cor_matrix(matlist, pt_bin, eta_bin, output_dir):
     _label_ticks(ax.xaxis)
     _label_ticks(ax.yaxis)
     ticks = 0.1**np.r_[lin_order:0:-1]
-    full_ticks = (np.r_[-10:11].T * ticks[:,None]).flatten()
+    full_ticks = np.unique(np.r_[-10:11].T * ticks[:,None])
     # formatter = LogFormatterMathtext()
     formatter = FuncFormatter(_log_formatting)
     cb = fig.colorbar(img, label='Correlation Coefficient', ticks=full_ticks,

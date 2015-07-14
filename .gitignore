@@ -3,3 +3,4 @@
 *.root
 *.h5
 *.json
+/test/

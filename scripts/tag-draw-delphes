@@ -12,7 +12,7 @@ from matplotlib.figure import Figure
 def _get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file')
-    parser.add_argument('output_dir', nargs='?', default='test.h5')
+    parser.add_argument('output_dir', nargs='?', default='test')
     args = parser.parse_args()
     return args
 
@@ -58,7 +58,7 @@ def run():
     _make_plot(d0_plots, 'd0_comp_close.pdf', 'd0', **clops)
     _make_plot(
         [(_ptdef[x], y['smear_d0']) for x,y in pt.items()], 'd0_pt.pdf',
-        'd0 smearing', xlims=close, **ops)
+        'd0 smearing', xlims=close, norm=True, **ops)
     _make_plot(three_flavor('track_pt'), 'track_pt.pdf', _pt, log=True, **ops)
 
     _make_plot(three_flavor('track_ipsig'), 'ipsig.pdf', 'ip sig', **lops)

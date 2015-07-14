@@ -1,6 +1,9 @@
 *.root
 *.h5
+*.json
 /build/
 /bin/
 /dict/
 /delphes
+/test/
+

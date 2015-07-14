@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 from matplotlib.cm import get_cmap
 from matplotlib.colors import SymLogNorm, LogNorm
 from matplotlib.ticker import FuncFormatter, LogFormatterMathtext
-
+from matplotlib.transforms import blended_transform_factory as trmix
 
 import numpy as np
 
@@ -19,8 +19,8 @@ from enum import Enum
 class _trkpar(Enum):
     d0 = (0, r'$d_0$', 'mm')
     z0 = (1, r'$z_0$', 'mm')
-    phi= (2, r'$\phi$', '')
-    theta = (3, r'$\theta$', '')
+    phi= (2, r'$\phi$', 'rad')
+    theta = (3, r'$\theta$', 'rad')
     qoverp = (4, r'$q/p$', r'MeV$^{-1}$')
     def __init__(self, index, string, units):
         self.index = index
@@ -47,8 +47,10 @@ def run():
         _print_par_eta_vs_pt(cov, output_dir=args.output_dir,
                              parameter=par)
 
-_pt_bins = dict(enumerate([10, 20, 50, 100, 200, 250, 500, 750]))
-_eta_bins = dict(enumerate([0.0, 0.4, 0.8, 1.05, 1.5, 1.7, 2.0, 2.25, 2.7]))
+_bonus = [3.0] + [3.2, 3.4, 3.6] # totally made up eta bins
+_pt_bins = dict(enumerate([0] + [10, 20, 50, 100, 200, 250, 500, 750]))
+_eta_bins = dict(enumerate(
+    [0.0, 0.4, 0.8, 1.05, 1.5, 1.7, 2.0, 2.25, 2.7] + _bonus))
 
 def _int_keys(json_dict):
     """recursive translation to int keyed dict"""
@@ -93,12 +95,8 @@ def _print_par_eta_vs_pt(cov_array, output_dir, parameter):
     fig = Figure(figsize=(5.0, 5.0*3/4))
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(1,1,1)
-    # WARNING: right now I don't know if these bins are correct...
-    warnings.warn('we need need confirmation from Shih-Chieh that these bins '
-                  'are correct', stacklevel=2)
-    zeroed_pt = np.r_[[0], list(_pt_bins.values())]
-    # zeroed_eta = np.r_[[0], list(_eta_bins.values())]
-    zeroed_eta = np.array(list(_eta_bins.values()) + [3.0])
+    zeroed_pt = np.fromiter(_pt_bins.values(), dtype='d')
+    zeroed_eta = np.fromiter(_eta_bins.values(), dtype='d')
     valid_div = cov_array > 0.0
     stdiv_array = np.ones(cov_array.shape) * -1
     stdiv_array[valid_div] = cov_array[valid_div]**0.5
@@ -115,8 +113,19 @@ def _print_par_eta_vs_pt(cov_array, output_dir, parameter):
     # img.set_under('k')
     ax.set_xscale('log')
     ax.set_xlim(5, zeroed_pt[-1])
+    ax.set_ylim(zeroed_eta[1], zeroed_eta[-1])
     ax.set_xlabel(r'$p_{\rm T}$ [GeV]', x=0.98, ha='right')
     ax.set_ylabel(r'$|\eta|$', y=0.98, ha='right')
+
+    # WARNING: right now I don't know if these bins are correct...
+    warnings.warn('we need need confirmation from Shih-Chieh that these bins '
+                  'are correct', stacklevel=2)
+    bady = 2.7
+    ax.axhline(y=bady, color='r')
+    textopt = dict(
+        transform=trmix(ax.transAxes, ax.transData), va='bottom', x=0.5)
+    ax.text(y=bady, s='the mystery bins', color='red', **textopt)
+
     outname = '{}_eta_vs_pt.pdf'.format(parameter.name)
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
@@ -124,10 +133,12 @@ def _print_par_eta_vs_pt(cov_array, output_dir, parameter):
 
 
 def _get_par_eta_vs_pt(cov_pars, parameter):
-    pt_eta_array = np.ones((len(_pt_bins), len(_eta_bins))) * -1
+    pt_eta_array = np.ones((len(_pt_bins) - 1, len(_eta_bins) - 1)) * -1
     par = parameter.index
-    for pt_bin, pt_upper in _pt_bins.items():
-        for eta_bin, eta_upper in _eta_bins.items():
+    # we don't have values for the upper bin: it's just a dummy to indicate
+    # higher values.
+    for pt_bin, pt_upper in list(_pt_bins.items())[:-1]:
+        for eta_bin, eta_upper in list(_eta_bins.items())[:-1]:
             # spt, seta = str(pt_bin), str(eta_bin)
             pt_eta_list = cov_pars[pt_bin].get(eta_bin)
             if not pt_eta_list: continue

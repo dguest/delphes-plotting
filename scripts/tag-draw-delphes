@@ -10,9 +10,11 @@ from matplotlib.figure import Figure
 # from matplotlib.ticker import FuncFormatter
 
 def _get_args():
+    d = 'default: %(default)s'
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file')
     parser.add_argument('output_dir', nargs='?', default='test')
+    parser.add_argument('-e', '--ext', default='pdf', help=d)
     args = parser.parse_args()
     return args
 
@@ -23,9 +25,6 @@ _ptdef = {'low': r'$0.4 < p_{{\rm T}} {st} < 0.5$'.format(**_alias),
 
 def run():
     args = _get_args()
-    ops = dict(output_dir=args.output_dir)
-    lops = ops.copy()
-    lops['log'] = True
 
     h5f = h5py.File(args.input_file)
 
@@ -37,14 +36,26 @@ def run():
     matched = h5f['matched_track_hists']
     pt = {x:h5f[x + '_pt_tracks'] for x in ['low', 'high']}
     def three_flavor(variable):
-        legs = [x.format(variable) for x in ['all {}', 'b {}', 'light {}']]
-        datasets = [x[variable] for x in [all_jets, b_jets, light_jets]]
+        legs = [x.format(variable) for x in ['matched', 'b', 'light']]
+        datasets = [x[variable] for x in [matched, b_jets, light_jets]]
         return zip(legs, datasets)
+
+    def v_three_flavor(variable):
+        return three_flavor(variable), variable
+
     def leading(variable):
         legs = [x.format(variable) for x in ['b {}', 'light {}']]
         datasets = [x[variable] for x in [leading_b, leading_light]]
         return zip(legs, datasets)
 
+    ops = vars(args)
+    lops = ops.copy()
+    lops['log'] = True
+    clops = lops.copy()
+    close = (-0.1, 0.1)
+    clops['xlims'] = close
+
+    # d0 plots
     d0_plots = [
         ('raw b',b_jets['particle_d0']),
         ('smeared b',b_jets['track_d0']),
@@ -52,51 +63,32 @@ def run():
         ('smeared light', light_jets['track_d0']),
     ]
     _make_plot(d0_plots, 'd0_comp.pdf', 'd0', **lops)
-    clops = lops.copy()
-    close = (-0.1, 0.1)
-    clops['xlims'] = close
     _make_plot(d0_plots, 'd0_comp_close.pdf', 'd0', **clops)
+
+    # smearing check
     _make_plot(
         [(_ptdef[x], y['smear_d0']) for x,y in pt.items()], 'd0_pt.pdf',
-        'd0 smearing', xlims=close, norm=True, **ops)
-    _make_plot(three_flavor('track_pt'), 'track_pt.pdf', _pt, log=True, **ops)
+        'd0 smearing', xlims=(-0.05, 0.05), norm=True, **ops)
 
-    _make_plot(three_flavor('track_ipsig'), 'ipsig.pdf', 'ip sig', **lops)
-    _make_plot(three_flavor('track_ip'), 'ip.pdf', 'ip', log=True, **ops)
-    _make_plot(three_flavor('n_tracks'), 'n_tracks.pdf', 'n tracks', **ops)
-    _make_plot(three_flavor('n_jets'), 'n_jets.pdf', 'n jets', **ops)
-    # _make_plot([
-    #     ('track ip', b_jets['track_ip']),
-    #     ('track d0', b_jets['track_d0'])],
-    #            'bjet_track_ipvsd0.pdf', 'disp', **ops)
-    _make_plot(three_flavor('track_jet_dr'), 'trackjetdr.pdf', '$\Delta R$',
+    # tones of 'three-flavor' plots
+    _make_plot(*v_three_flavor('track_pt'), xname=_pt, log=True,
+               xlims=(0.0, 50), **ops)
+    _make_plot(*v_three_flavor('track_ipsig'), xname='ip sig', **lops)
+    _make_plot(*v_three_flavor('track_ip'), xname='ip', log=True, **ops)
+    _make_plot(*v_three_flavor('n_tracks'), xname='n tracks', **ops)
+    _make_plot(*v_three_flavor('n_jets'), xname='n jets', **ops)
+    _make_plot(*v_three_flavor('track_jet_dr'), xname='$\Delta R$',
                log=True, **ops)
     _make_plot(three_flavor('track_d0phi'), 'track_d0phi.pdf', 'd0 $\phi$',
                **ops)
-    # _make_plot(leading('track_ip'), 'leading_ip.pdf', 'IP', **ops)
-    # _make_plot(leading('track_d0'), 'leading_d0.pdf', 'd0', **ops)
-    # _make_plot(leading('track_pt'), 'leading_pt.pdf', _pt, log=True, **ops)
-    # _make_plot([
-    #     ('leading', leading_light['track_pt']),
-    #     ('all', light_jets['track_pt'])],
-    #            'pt_leading_vs_all.pdf', _pt, log=True)
-    # _make_plot(three_flavor('initial_d0'), 'initial_d0.pdf', 'd0', **ops)
-
-    _make_plot([
-        ('track', matched['track_d0']),
-        ('part', matched['particle_d0'])],
-               'matched_d0.pdf', xname='d0', log=True, **ops)
-    _make_plot([
-        ('matched track', matched['track_ipsig']),
-        ('b jet', b_jets['track_ipsig']),
-        ('all jets', all_jets['track_ipsig'])],
-               'matched_ipsig.pdf', xname='IP', log=True, **ops)
-    _make_plot(three_flavor('jet_d0_dphi'), 'jet_d0_dphi.pdf', 'dphi', **ops)
-    _make_plot(three_flavor('track_d0_dphi'), 'track_d0_dphi.pdf', 'dphi', **ops)
+    # _make_plot(three_flavor('track_jet_dphi'), 'track_jet_dphi.pdf', _dphi, **ops)
+    _make_plot(three_flavor('jet_d0_dphi'), 'jet_d0_dphi.pdf', _dphi, **ops)
+    _make_plot(three_flavor('track_d0_dphi'), 'track_d0_dphi.pdf', _dphi, **ops)
 
 _pt = r'$p_{\rm T}$'
 _ax_size = 12
 _text_size = 12
+_dphi = r'$\Delta \phi$'
 
 def _make_plot(names, outname, xname, log=False, norm=False,
                output_dir='plots', **kwargs):
@@ -107,7 +99,7 @@ def _make_plot(names, outname, xname, log=False, norm=False,
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(1,1,1)
     color_itr = iter(['black', 'red', 'blue', 'darkgreen'])
-    units = set()
+    uset = set()
     for leg, dataset in names:
         extent = [dataset.attrs[x][0] for x in ['min', 'max']]
         yvals = np.array(dataset)[1:]
@@ -116,22 +108,31 @@ def _make_plot(names, outname, xname, log=False, norm=False,
         if norm:
             yvals /= yvals[:-1].sum()
             y_lab = 'arb'
-        ax.plot(xvals[:-1], yvals[:-1], drawstyle='steps-post', label=leg, color=color)
-        units.add(dataset.attrs['units'][0])
-    assert len(units) == 1, "incompatible units: {}".format(units)
+        ax.plot(xvals[:-1], yvals[:-1], drawstyle='steps-post',
+                label=leg, color=color)
+        uset.add(dataset.attrs['units'][0])
+    assert len(uset) == 1, "incompatible units: {}".format(uset)
 
-    xlab = '{} [{}]'.format(xname, units.pop())
+    units = uset.pop()
+    xlab = '{} [{}]'.format(xname, units) if units else xname
     ax.set_xlabel(xlab, x=0.98, ha='right', size=_ax_size)
     ax.set_ylabel(y_lab, y=0.98, ha='right', size=_ax_size)
     ax.set_xlim(*kwargs.get('xlims',extent))
+    ax.grid(which='both', alpha=0.05, ls='-')
     if log:
-        ax.grid(which='both', alpha=0.05, ls='-')
         ax.set_ylim(0.01 if norm else 1, ax.get_ylim()[1])
         ax.set_yscale('log')
     ax.legend(framealpha=0, prop=dict(size=_text_size))
+
+    # maybe change the extension
+    base, ext = os.path.splitext(outname)
+    outname = '{}.{}'.format(base, kwargs.get('ext', ext).lstrip('.'))
+
+    # save this shit
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
-    canvas.print_figure(os.path.join(output_dir,outname), bbox_inches='tight')
+    canvas.print_figure(os.path.join(output_dir,outname),
+                        bbox_inches='tight', dpi=150)
 
 if __name__ == '__main__':
     run()

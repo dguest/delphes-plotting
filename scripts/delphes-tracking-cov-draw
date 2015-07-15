@@ -47,8 +47,11 @@ def run():
         _print_par_eta_vs_pt(cov, output_dir=args.output_dir,
                              parameter=par)
 
-_bonus = [3.0] + [3.2, 3.4, 3.6] # totally made up eta bins
-_pt_bins = dict(enumerate([0] + [10, 20, 50, 100, 200, 250, 500, 750]))
+_pt_bins = dict(enumerate([10, 20, 50, 100, 200, 250, 500, 750, 1000]))
+# pt bins start at -1 so we can account for the lowest (dummy) one
+_pt_bins[-1] = 0
+
+_bonus = [3.0] #+ [3.2, 3.4, 3.6] # totally made up eta bins
 _eta_bins = dict(enumerate(
     [0.0, 0.4, 0.8, 1.05, 1.5, 1.7, 2.0, 2.25, 2.7] + _bonus))
 
@@ -95,14 +98,15 @@ def _print_par_eta_vs_pt(cov_array, output_dir, parameter):
     fig = Figure(figsize=(5.0, 5.0*3/4))
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(1,1,1)
-    zeroed_pt = np.fromiter(_pt_bins.values(), dtype='d')
-    zeroed_eta = np.fromiter(_eta_bins.values(), dtype='d')
+    zeroed_pt = np.sort(np.fromiter(_pt_bins.values(), dtype='d'))
+    zeroed_eta = np.sort(np.fromiter(_eta_bins.values(), dtype='d'))
     valid_div = cov_array > 0.0
     stdiv_array = np.ones(cov_array.shape) * -1
     stdiv_array[valid_div] = cov_array[valid_div]**0.5
     stdiv_array[~valid_div] = -1
     cmap = get_cmap('jet')
-    cmap.set_under('k')
+    # cmap.set_under('k')
+    # print(parameter, stdiv_array)
     img = ax.pcolormesh(zeroed_pt, zeroed_eta, stdiv_array.T, vmin=0,
                         cmap=cmap)
     lab = parameter.string + ' width'
@@ -113,18 +117,16 @@ def _print_par_eta_vs_pt(cov_array, output_dir, parameter):
     # img.set_under('k')
     ax.set_xscale('log')
     ax.set_xlim(5, zeroed_pt[-1])
-    ax.set_ylim(zeroed_eta[1], zeroed_eta[-1])
+    ax.set_ylim(zeroed_eta[0], zeroed_eta[-1])
     ax.set_xlabel(r'$p_{\rm T}$ [GeV]', x=0.98, ha='right')
     ax.set_ylabel(r'$|\eta|$', y=0.98, ha='right')
 
-    # WARNING: right now I don't know if these bins are correct...
-    warnings.warn('we need need confirmation from Shih-Chieh that these bins '
-                  'are correct', stacklevel=2)
-    bady = 2.7
-    ax.axhline(y=bady, color='r')
+    badx = 10
+    ax.axvline(x=badx, color='r')
     textopt = dict(
-        transform=trmix(ax.transAxes, ax.transData), va='bottom', x=0.5)
-    ax.text(y=bady, s='the mystery bins', color='red', **textopt)
+        transform=trmix(ax.transData, ax.transAxes), ha='right', y=0.5,
+        rotation='vertical', va='center')
+    ax.text(x=badx, s='not defined', color='red', **textopt)
 
     outname = '{}_eta_vs_pt.pdf'.format(parameter.name)
     if not os.path.isdir(output_dir):
@@ -133,16 +135,18 @@ def _print_par_eta_vs_pt(cov_array, output_dir, parameter):
 
 
 def _get_par_eta_vs_pt(cov_pars, parameter):
-    pt_eta_array = np.ones((len(_pt_bins) - 1, len(_eta_bins) - 1)) * -1
+    n_pt = len(_pt_bins)    # extra pt bin is dummy at low end
+    n_eta = len(_eta_bins) - 1
+    pt_eta_array = np.ones((n_pt, n_eta)) * -1
     par = parameter.index
     # we don't have values for the upper bin: it's just a dummy to indicate
     # higher values.
-    for pt_bin, pt_upper in list(_pt_bins.items())[:-1]:
-        for eta_bin, eta_upper in list(_eta_bins.items())[:-1]:
-            # spt, seta = str(pt_bin), str(eta_bin)
-            pt_eta_list = cov_pars[pt_bin].get(eta_bin)
+    for pt_bin, pt_upper in sorted(_pt_bins.items())[:-1]:
+        for eta_bin, eta_upper in sorted(_eta_bins.items())[:-1]:
+            # we pull the -1 bin from the 0 bin...
+            pt_eta_list = cov_pars[max(pt_bin, 0)].get(eta_bin)
             if not pt_eta_list: continue
-            pt_eta_array[pt_bin, eta_bin] = pt_eta_list[par][par]
+            pt_eta_array[pt_bin + 1, eta_bin] = pt_eta_list[par][par]
     return pt_eta_array
 
 # ________________________________________________________________________

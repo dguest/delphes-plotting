@@ -76,7 +76,7 @@ def _print_cor_matrix(matlist, pt_bin, eta_bin, output_dir):
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(1,1,1)
     cmap = get_cmap('RdBu')
-    lin_order = 3               # make log flat after this
+    lin_order = 3               # make log flat after this order of small
     norm = SymLogNorm(linthresh=10**(-lin_order), vmin=-1.001, vmax=1-0.001)
     img = ax.matshow(np.asarray(cov), norm=norm, cmap=cmap)
     # cmap.set_over('k')
@@ -84,7 +84,6 @@ def _print_cor_matrix(matlist, pt_bin, eta_bin, output_dir):
     _label_ticks(ax.yaxis)
     ticks = 0.1**np.r_[lin_order:0:-1]
     full_ticks = np.unique(np.r_[-10:11].T * ticks[:,None])
-    # formatter = LogFormatterMathtext()
     formatter = FuncFormatter(_log_formatting)
     cb = fig.colorbar(img, label='Correlation Coefficient', ticks=full_ticks,
                       format=formatter)
@@ -105,8 +104,7 @@ def _print_par_eta_vs_pt(cov_array, output_dir, parameter):
     stdiv_array[valid_div] = cov_array[valid_div]**0.5
     stdiv_array[~valid_div] = -1
     cmap = get_cmap('jet')
-    # cmap.set_under('k')
-    # print(parameter, stdiv_array)
+    cmap.set_under('k')
     img = ax.pcolormesh(zeroed_pt, zeroed_eta, stdiv_array.T, vmin=0,
                         cmap=cmap)
     lab = parameter.string + ' width'
@@ -114,7 +112,6 @@ def _print_par_eta_vs_pt(cov_array, output_dir, parameter):
     if units:
         lab += ' [{}]'.format(units)
     cb = fig.colorbar(img, label=lab)
-    # img.set_under('k')
     ax.set_xscale('log')
     ax.set_xlim(5, zeroed_pt[-1])
     ax.set_ylim(zeroed_eta[0], zeroed_eta[-1])

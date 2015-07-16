@@ -68,6 +68,15 @@ def _label_ticks(axis, labels=_trkpar):
     axis.set_ticks(tickpos)
     axis.set_ticklabels([x.string for x in labels])
 
+def _get_sym_ticks(lin_order):
+    """get symmetric tickmarks for log scale around zero, up to 1"""
+    major = 0.1**np.r_[1:lin_order + 1]
+    mdiv = np.r_[2:10]
+    minor = (mdiv.T * major[:,None]).flatten()
+    both = np.sort(np.r_[major, minor])
+    full_ticks = np.r_[-1, -both[::-1], 0, both, 1]
+    return full_ticks
+
 def _print_cor_matrix(matlist, pt_bin, eta_bin, output_dir):
     ar = np.asarray(matlist[pt_bin][eta_bin])
     invstdev = np.matrix(np.diag(np.diag(ar)**(-0.5)))
@@ -82,8 +91,7 @@ def _print_cor_matrix(matlist, pt_bin, eta_bin, output_dir):
     # cmap.set_over('k')
     _label_ticks(ax.xaxis)
     _label_ticks(ax.yaxis)
-    ticks = 0.1**np.r_[lin_order:0:-1]
-    full_ticks = np.unique(np.r_[-10:11].T * ticks[:,None])
+    full_ticks = _get_sym_ticks(lin_order)
     formatter = FuncFormatter(_log_formatting)
     cb = fig.colorbar(img, label='Correlation Coefficient', ticks=full_ticks,
                       format=formatter)

@@ -29,7 +29,7 @@ const double MeV = 0.001;
 // b-tagging bits
 namespace bit {
   // const unsigned B_TAG = 1 << 0;
-  const unsigned B_FLAVOR = 1 << 1;
+  // const unsigned B_FLAVOR = 1 << 1;
 }
 const double pi = std::atan2(0, -1);
 
@@ -301,8 +301,8 @@ int main(int argc, char *argv[])
       Jet* jet = root::as<Jet>(bJets->At(i_jet));
       int n_constituents = jet->Constituents.GetEntriesFast();
 
-      bool b_label = (jet->BTag & bit::B_FLAVOR);
-      // bool b_tag = (jet->BTag & bit::B_TAG);
+      // bool b_label = (jet->BTag & bit::B_FLAVOR);
+      bool b_label = jet->Flavor == 5;
 
       // loop over all the tracks
       int n_tracks = 0;

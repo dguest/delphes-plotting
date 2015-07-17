@@ -76,10 +76,10 @@ LIBS         += $(ROOTLIBS)
 
 # ---- define objects
 GEN_OBJ     := ExRootTreeReader.o misc_func.o truth_tools.o
-TOP_OBJ     += tag-perf-delphes.o
+TOP_OBJ     += delphes-tracking-plots-build.o
 
 # stuff used for the c++ executable
-ALL_EXE    := tag-perf-delphes
+ALL_EXE    := delphes-tracking-plots-build
 
 GEN_OBJ_PATHS := $(GEN_OBJ:%=$(BUILD)/%)
 TOP_OBJ_PATHS := $(TOP_OBJ:%=$(BUILD)/%)
@@ -87,7 +87,7 @@ ALL_EXE_PATHS := $(ALL_EXE:%=$(OUTPUT)/%)
 
 all: $(ALL_EXE_PATHS)
 
-$(OUTPUT)/tag-perf-%: $(GEN_OBJ_PATHS) $(BUILD)/tag-perf-%.o
+$(OUTPUT)/delphes-%: $(GEN_OBJ_PATHS) $(BUILD)/delphes-%.o
 	@mkdir -p $(OUTPUT)
 	@echo "linking $^ --> $@"
 	@$(CXX) -o $@ $^ $(LIBS) $(LDFLAGS)

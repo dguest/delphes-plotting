@@ -58,11 +58,11 @@ _run() {
 	fi
 	if [[ ! -f $H5OUT ]] ; then
 	    echo "building $H5OUT"
-	    tag-perf-delphes $ROOTFILE $H5OUT
+	    delphes-tracking-plots-build $ROOTFILE $H5OUT
 	fi
 	if [[ ! -d $PLOTDIR ]] ; then
 	    echo "drawing in $PLOTDIR"
-	    tag-draw-delphes $H5OUT $PLOTDIR
+	    delphes-tracking-plots-draw $H5OUT $PLOTDIR
 	fi
     done
 }

@@ -64,7 +64,7 @@ LDFLAGS      := #-Wl,--no-undefined
 CXXFLAGS     += -I$(HDF_PATH)/include
 LIBS         += -L$(HDF_PATH)/lib -Wl,-rpath,$(HDF_PATH)/lib
 LIBS         += -L$(DELPHES_ABSOLUTE) -Wl,-rpath,$(DELPHES_ABSOLUTE)
-LIBS         += -ldelphes
+LIBS         += -lDelphes
 
 # --- HDF5 needed for hist saving
 LIBS         += -lhdf5_cpp -lhdf5

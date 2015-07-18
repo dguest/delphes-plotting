@@ -149,8 +149,8 @@ namespace var {
     return {
       {PT.name, jet->PT},
       {ETA.name, jet->Eta},
-      {LXY.name, jet->SecondaryVertexLxy},
-      {LSIG.name, jet->SecondaryVertexLsig},
+      {LXY.name, std::log1p(jet->SecondaryVertexLxy)},
+      {LSIG.name, std::log1p(jet->SecondaryVertexLsig)},
       {EFRC.name, jet->SecondaryVertexEfrac},
       {MASS.name, jet->SecondaryVertexMass},
       {NTRK.name, jet->SecondaryVertexNtracks}

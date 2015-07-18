@@ -75,7 +75,7 @@ LDFLAGS      += $(ROOTLDFLAGS)
 LIBS         += $(ROOTLIBS)
 
 # ---- define objects
-GEN_OBJ     := ExRootTreeReader.o misc_func.o truth_tools.o
+GEN_OBJ     := ExRootTreeReader.o misc_func.o truth_tools.o AllPlanes.o
 TOP_OBJ     += delphes-tracking-plots-build.o
 TOP_OBJ     += delphes-vertex-plots-build.o
 

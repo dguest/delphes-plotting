@@ -15,7 +15,7 @@
 #include "classes/DelphesClasses.h"
 
 #include "ExRootTreeReader.h"
-#include "misc_func.hh"
+#include "misc_func.hh" 	// cli
 #include "root.hh"
 #include "truth_tools.hh"
 
@@ -204,45 +204,6 @@ void fill_track_hists(Hists& hists, const Track* track, const Jet* jet) {
   }
 }
 
-// === command line interface ===
-
-struct CLI
-{
-  std::string out_name;
-  std::string input;
-  int err_code;
-  void usage(std::string prname) {
-    std::cerr << "usage: " << prname << ": <input> [<output>]" << std::endl;
-  }
-  int read(int argc, char* argv[]) {
-    using namespace std;
-    if (argc == 1 || argc > 3) {
-      usage(argv[0]);
-      err_code = 1;
-      return err_code;
-    }
-
-    input = argv[1];
-    if (!exists(input)) {
-      cerr << input << " doesn't exist, exiting!" << endl;
-      err_code = 1;
-      return 1;
-    }
-
-    if (argc > 2) {
-      out_name = argv[2];
-    } else {
-      out_name = "test.h5";
-    }
-    if (exists(out_name)) {
-      cerr << out_name << " exists, exiting" << endl;
-      err_code = 1;
-      return err_code;
-    }
-    return 0;
-  }
-};
-
 // ____________________________________________________
 // main function
 
@@ -252,12 +213,11 @@ int main(int argc, char *argv[])
   gROOT->SetBatch();
 
   CLI cli;
-  cli.read(argc, argv);
-  if (cli.err_code) return cli.err_code;
+  if (cli.read(argc, argv)) return cli.err_code();
 
   // Create chain of root trees
   TChain chain("Delphes");
-  chain.Add(cli.input.c_str());
+  chain.Add(cli.in_name.c_str());
 
   // Create object of class ExRootTreeReader
   ExRootTreeReader* treeReader = new ExRootTreeReader(&chain);

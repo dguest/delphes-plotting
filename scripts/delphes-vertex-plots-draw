@@ -36,7 +36,7 @@ def run():
         bottom = _get_all_arrays(fp, 5)
         others = [_get_all_arrays(fp, x) for x in fp if x not in '45']
 
-    # git a dict of axis properties
+    # get a dict of axis properties
     axes_dict = {n: a[1] for n, a in charm.items()}
 
     # get dicts of the form {name: array, ...}
@@ -55,12 +55,15 @@ def run():
     projected = set()
     for plname in all_plot_names:
         rgb = bottom_dict[plname], charm_dict[plname], others_dict[plname]
-        # draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath(plname))
+        draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath(plname))
         xax = plname.split('_')[1]
         if xax not in projected:
             print(xax)
             draw_xproj(*rgb, axis=axes_dict[plname][1], out_path=opath(xax),
                        norm=True)
+            log_name = opath(xax + '_log')
+            draw_xproj(*rgb, axis=axes_dict[plname][1], out_path=log_name,
+                       log=True)
             projected.add(xax)
 
 
@@ -88,7 +91,7 @@ def nth_largest(array, n):
     # array length
     if n % 1 != 0:
         n = math.ceil(len(array) * n)
-    return np.sort(array)[-n]
+    return np.sort(array.flatten())[-n]
 
 
 def _get_all_arrays(fp, label):
@@ -101,9 +104,9 @@ def draw_rgb(red, green, blue, axes, out_path):
     # crop off overflow
     rgb = rgb[1:-1, 1:-1,:]
     rgb = np.log1p(rgb)
-    # for iii in range(rgb.shape[2]):
-    #     maxval = (rgb[:,:,iii].max() * maxcut)
-    #     rgb[:,:,iii] = np.minimum(rgb[:,:,iii] / maxval, 1.0)
+    for iii in range(rgb.shape[2]):
+        maxval = nth_largest(rgb[:,:,iii], 2)
+        rgb[:,:,iii] = np.minimum(rgb[:,:,iii] / maxval, 1)
     fig = Figure(figsize=(5.0,5.0*3/4))
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(1,1,1)
@@ -142,9 +145,7 @@ def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False):
         y_max = max(y_max, nth_largest(y_vals, 2))
     ax.set_xlim(*xlims)
     xname = axis.name
-    ax.set_xlabel(
-        '{} [{}]'.format(xname, axis.units) if axis.units else xname,
-        x=0.98, ha='right', size=_ax_size)
+    ax.set_xlabel(axis_name(axis), x=0.98, ha='right', size=_ax_size)
     ax.set_ylabel(y_lab, y=0.98, ha='right', size=_ax_size)
 
     if log:
@@ -158,9 +159,13 @@ def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False):
         os.mkdir(out_dir)
     canvas.print_figure(out_path, bbox_inches='tight')
 
+def axis_name(axis):
+    nm, un = axis.name, axis.units
+    return '{} [{}]'.format(nm, un) if un else nm
+
 def _label_axes(ax, axes, size=12):
-    ax.set_xlabel(axes[0].name, x=0.98, ha='right', size=size)
-    ax.set_ylabel(axes[1].name, y=0.98, ha='right', size=size)
+    ax.set_xlabel(axis_name(axes[0]), x=0.98, ha='right', size=size)
+    ax.set_ylabel(axis_name(axes[1]), y=0.98, ha='right', size=size)
 
 def _add_legend(ax):
     rgb_patch = [Patch(color=x) for x in 'rgb']

@@ -46,7 +46,7 @@ struct Hists {
 
 const double VERTEX_MASS_MAX = 10;
 const unsigned MAX_JETS = 20;
-const unsigned MAX_TRACKS = 50;
+const unsigned MAX_TRACKS = 30;
 
 Hists::Hists():
   vertex_mass(100, 0, VERTEX_MASS_MAX, "GeV"),
@@ -74,7 +74,7 @@ namespace var {
   const Axis PT   = {"pt"  , 100, 0, 100, "Gev"};
   const Axis ETA  = {"eta" , 100, -2.7, 2.7, ""};
   const Axis LXY  = {"lxy" , 100, 0, 10, "log1p mm"};
-  const Axis LSIG = {"lsig", 100, 0, 20, "log1p"};
+  const Axis LSIG = {"lsig", 100, 0, 15, "log1p"};
   const Axis EFRC = {"efrc", 100, 0, 1.001, ""};
   const Axis MASS = {"mass", 100, 0, 15, "GeV"};
   const Axis NTRK = {"ntrk", MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, ""};

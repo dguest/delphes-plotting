@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+
+import os, sys
+import numpy as np
+import h5py
+import argparse
+
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+# from matplotlib.ticker import FuncFormatter
+
+def _get_args():
+    d = 'default: %(default)s'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file')
+    parser.add_argument('output_dir', nargs='?', default='test')
+    parser.add_argument('-e', '--ext', default='pdf', help=d)
+    args = parser.parse_args()
+    return args
+
+_alias = dict(st=r'\sqrt{\sin \theta}')
+_ptdef = {'low': r'$0.4 < p_{{\rm T}} {st} < 0.5$'.format(**_alias),
+          'high': r'$p_{{\rm T}} {st} > 20$ GeV'.format(**_alias)}
+_pt = r'$p_{\rm T}$'
+_ax_size = 12
+_text_size = 12
+_dphi = r'$\Delta \phi$'
+
+def run():
+    args = _get_args()
+
+    with h5py.File(args.input_file, 'r') as h5file:
+        fp = h5file['planes_by_flavor']
+        charm = _get_all_arrays(fp, 4)
+        bottom = _get_all_arrays(fp, 5)
+        others = [_get_all_arrays(fp, x) for x in fp if x not in '45']
+
+    # git a dict of axis properties
+    axes_dict = {n: a[1] for n, a in charm.items()}
+
+    # get dicts of the form {name: array, ...}
+    charm_dict = {n: a[0] for n, a in charm.items()}
+    bottom_dict = {n: a[0] for n, a in bottom.items()}
+    others_dict = {n: a[0] for n, a in others[0].items()}
+    for other in others[1:]:
+        for pl_name, (arr, axes) in other.items():
+            others_dict[pl_name] += arr
+
+    all_plot_names = list(charm_dict)
+    for plname in all_plot_names:
+        out_name = plname + '.' + args.ext.lstrip('.')
+        opath = os.path.join(args.output_dir, out_name)
+        rgb = bottom_dict[plname], charm_dict[plname], others_dict[plname]
+        draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath)
+
+
+class Axis:
+    def __init__(self, prop_list, array):
+        self.name = array[prop_list.index('name')]
+        self.lims = [array[prop_list.index(x)] for x in ['min', 'max']]
+        self.units = array[prop_list.index('units')]
+    def __str__(self):
+        prints = [self.name] + list(self.lims) + [self.units]
+        return 'name: {}, range: {}-{}, units {}'.format(
+            *(str(x) for x in prints))
+
+def get_axes(ds):
+    axes_ar = ds.attrs['axes']
+    ax_props = axes_ar.dtype.names
+    axes = []
+    for ax in axes_ar:
+        the_ax = Axis(ax_props, ax)
+        axes.append(the_ax)
+    return axes
+
+def _get_all_arrays(fp, label):
+    """ return a dict of {name: (numpy_array, [axis, ...]), ...} """
+    lab = str(label)
+    return {n:(np.array(a), get_axes(a)) for n, a in fp[lab].items()}
+
+def draw_rgb(red, green, blue, axes, out_path):
+    rgb = np.dstack([red, green, blue])
+    # crop off overflow
+    rgb = rgb[1:-1, 1:-1,:]
+    rgb = np.log1p(rgb)
+    # for iii in range(rgb.shape[2]):
+    #     maxval = (rgb[:,:,iii].max() * maxcut)
+    #     rgb[:,:,iii] = np.minimum(rgb[:,:,iii] / maxval, 1.0)
+    fig = Figure(figsize=(5.0,5.0*3/4))
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(1,1,1)
+    xlims, ylims = axes[0].lims, axes[1].lims
+    imextent = list(xlims) + list(ylims)
+    # transpose arrays so they draw properly (weird property of imshow)
+    ax.imshow(rgb.swapaxes(0,1),
+              origin='lower', extent=imextent, aspect='auto')
+    ax.set_xlim(*xlims)
+    ax.set_ylim(*ylims)
+    _label_axes(ax, axes)
+    # _add_legend(ax)
+    # _add_atlas(ax, 0.02, 0.98, approval=approval)
+    # _add_sim_info(ax, 0.02, 0.38, size=10)
+    # xcut, ycut = ANTI_LIGHT_CUT, ANTI_B_CUT
+    # cutcolor = 'DarkGreen'
+    # _add_cut(ax, xcut, ycut, color=cutcolor)
+    # _annotate_cut(ax, xy=(3.5, ycut), xyt=(0.95, 0.05), color=cutcolor)
+    out_dir, out_file = os.path.split(out_path)
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+    canvas.print_figure(out_path, bbox_inches='tight')
+
+def _label_axes(ax, axes, size=12):
+    ax.set_xlabel(axes[0].name,
+                  x=0.98, ha='right', size=size)
+    ax.set_ylabel(axes[1].name,
+                  y=0.98, ha='right', size=size)
+
+def _add_legend(ax):
+    rgb_patch = [Patch(color=x) for x in 'rgb']
+    bcl_names = [r'$b$', r'$c$', r'$\rm light$']
+    title = 'Jet Flavor'
+    ax.legend(rgb_patch, bcl_names, loc='lower left', fancybox=True,
+              borderaxespad=0.2, title=title,
+              labelspacing=0.2, handlelength=1.0)
+
+
+
+if __name__ == '__main__':
+    run()

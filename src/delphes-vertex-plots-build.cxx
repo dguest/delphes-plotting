@@ -73,9 +73,9 @@ namespace var {
   // names for variables
   const Axis PT   = {"pt"  , 100, 0, 100, "Gev"};
   const Axis ETA  = {"eta" , 100, -2.7, 2.7, ""};
-  const Axis LXY  = {"lxy" , 100, 0, 100, "log1p mm"};
+  const Axis LXY  = {"lxy" , 100, 0, 10, "log1p mm"};
   const Axis LSIG = {"lsig", 100, 0, 20, "log1p"};
-  const Axis EFRC = {"efrc", 100, 0, 1, ""};
+  const Axis EFRC = {"efrc", 100, 0, 1.001, ""};
   const Axis MASS = {"mass", 100, 0, 15, "GeV"};
   const Axis NTRK = {"ntrk", MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, ""};
   const std::vector<Axis> all_vars{PT, ETA, LXY, LSIG, EFRC, MASS, NTRK};
@@ -114,6 +114,7 @@ int main(int argc, char *argv[])
   Hists hists;
   AllPlanes all_planes(var::all_vars);
   std::map<int, AllPlanes> planes_by_flavor;
+  std::map<std::string, int> counter;
 
   // Loop over all events
   std::cout << "looping over " << numberOfEntries << " entries" << std::endl;
@@ -127,6 +128,7 @@ int main(int argc, char *argv[])
 
     // loop over jets
     for (int i_jet = 0; i_jet < n_jets; i_jet++) {
+      counter["total jets"]++;
       Jet* jet = root::as<Jet>(bJets->At(i_jet));
       bool b_label = jet->Flavor == 5;
       auto const vars = var::get_var_map(jet);
@@ -134,10 +136,14 @@ int main(int argc, char *argv[])
       if (b_label) {
 	fill_vx_hists(hists, jet);
       }
-      if (!planes_by_flavor.count(jet->Flavor)) {
-	planes_by_flavor.emplace(jet->Flavor, var::all_vars);
+      if (jet->SecondaryVertexNtracks == -1) {
+	counter["jets with no vertex"]++;
+      } else {
+	if (!planes_by_flavor.count(jet->Flavor)) {
+	  planes_by_flavor.emplace(jet->Flavor, var::all_vars);
+	}
+	planes_by_flavor.at(jet->Flavor).fill(vars);
       }
-      planes_by_flavor.at(jet->Flavor).fill(vars);
     } // end loop over jets
   }   // end loop over events
 
@@ -148,7 +154,10 @@ int main(int argc, char *argv[])
   for (const auto& fl_pls: planes_by_flavor){
     fl_pls.second.save_to(by_flavor, std::to_string(fl_pls.first));
   }
-
+  for (const auto& st_ct: counter) {
+    std::cout << st_ct.first << ": " << st_ct.second
+	      << std::endl;
+  }
   return 0;
 
 }

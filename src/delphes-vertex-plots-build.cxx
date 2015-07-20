@@ -73,8 +73,8 @@ namespace var {
   // names for variables
   const Axis PT   = {"pt"  , 100, 0, 100, "Gev"};
   const Axis ETA  = {"eta" , 100, -2.7, 2.7, ""};
-  const Axis LXY  = {"lxy" , 100, 0, 100, "log mm"};
-  const Axis LSIG = {"lsig", 100, 0, 100, "log"};
+  const Axis LXY  = {"lxy" , 100, 0, 100, "log1p mm"};
+  const Axis LSIG = {"lsig", 100, 0, 20, "log1p"};
   const Axis EFRC = {"efrc", 100, 0, 1, ""};
   const Axis MASS = {"mass", 100, 0, 15, "GeV"};
   const Axis NTRK = {"ntrk", MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, ""};

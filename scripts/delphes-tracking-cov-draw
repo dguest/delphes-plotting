@@ -38,14 +38,21 @@ def _get_args():
     return args
 
 def run():
+    warnings.simplefilter("error")
     args = _get_args()
     with open(args.input_file, 'r') as jfile:
-        cov_pars = _int_keys(json.load(jfile))
+        jdict = json.load(jfile)
+
+    cov_pars = _int_keys(jdict['cov'])
+    mean_pars = _int_keys(jdict['mean'])
     _print_cor_matrix(cov_pars, 2, 2, output_dir=args.output_dir)
     for par in [_trkpar.d0, _trkpar.z0, _trkpar.phi, _trkpar.theta, _trkpar.qoverp]:
-        cov = _get_par_eta_vs_pt(cov_pars, par)
+        cov = _get_par_eta_vs_pt(cov_pars, _variance_grabber(par))
         _print_par_eta_vs_pt(cov, output_dir=args.output_dir,
-                             parameter=par)
+                             parameter=par, moment='width')
+        mean = _get_par_eta_vs_pt(mean_pars, _mean_grabber(par))
+        _print_par_eta_vs_pt(mean, output_dir=args.output_dir,
+                             parameter=par, moment='mean')
 
 _pt_bins = dict(enumerate([10, 20, 50, 100, 200, 250, 500, 750, 1000]))
 # pt bins start at -1 so we can account for the lowest (dummy) one
@@ -101,21 +108,17 @@ def _print_cor_matrix(matlist, pt_bin, eta_bin, output_dir):
     canvas.print_figure(os.path.join(output_dir,outname), bbox_inches='tight')
 
 
-def _print_par_eta_vs_pt(cov_array, output_dir, parameter):
+def _print_par_eta_vs_pt(array, output_dir, parameter, moment='width'):
     fig = Figure(figsize=(5.0, 5.0*3/4))
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(1,1,1)
     zeroed_pt = np.sort(np.fromiter(_pt_bins.values(), dtype='d'))
     zeroed_eta = np.sort(np.fromiter(_eta_bins.values(), dtype='d'))
-    valid_div = cov_array > 0.0
-    stdiv_array = np.ones(cov_array.shape) * -1
-    stdiv_array[valid_div] = cov_array[valid_div]**0.5
-    stdiv_array[~valid_div] = -1
+    masked = np.ma.masked_invalid(array)
     cmap = get_cmap('jet')
-    cmap.set_under('k')
-    img = ax.pcolormesh(zeroed_pt, zeroed_eta, stdiv_array.T, vmin=0,
-                        cmap=cmap)
-    lab = parameter.string + ' width'
+    cmap.set_bad('k')
+    img = ax.pcolormesh(zeroed_pt, zeroed_eta, masked.T, cmap=cmap)
+    lab = parameter.string + ' ' + moment
     units = parameter.units
     if units:
         lab += ' [{}]'.format(units)
@@ -133,17 +136,28 @@ def _print_par_eta_vs_pt(cov_array, output_dir, parameter):
         rotation='vertical', va='center')
     ax.text(x=badx, s='not defined', color='red', **textopt)
 
-    outname = '{}_eta_vs_pt.pdf'.format(parameter.name)
+    outname = '{}_{}_eta_vs_pt.pdf'.format(parameter.name, moment)
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
     canvas.print_figure(os.path.join(output_dir,outname), bbox_inches='tight')
 
+# define `grabber' functions to get various stuff from cov / mean lists
+def _variance_grabber(parameter):
+    idx = parameter.index
+    def grabber(parlist):
+        return (parlist[idx][idx])**0.5
+    return grabber
 
-def _get_par_eta_vs_pt(cov_pars, parameter):
+def _mean_grabber(parameter):
+    idx = parameter.index
+    def grabber(parlist):
+        return parlist[idx]
+    return grabber
+
+def _get_par_eta_vs_pt(cov_pars, grabber):
     n_pt = len(_pt_bins)    # extra pt bin is dummy at low end
     n_eta = len(_eta_bins) - 1
-    pt_eta_array = np.ones((n_pt, n_eta)) * -1
-    par = parameter.index
+    pt_eta_array = np.ones((n_pt, n_eta)) * float('nan')
     # we don't have values for the upper bin: it's just a dummy to indicate
     # higher values.
     for pt_bin, pt_upper in sorted(_pt_bins.items())[:-1]:
@@ -151,7 +165,7 @@ def _get_par_eta_vs_pt(cov_pars, parameter):
             # we pull the -1 bin from the 0 bin...
             pt_eta_list = cov_pars[max(pt_bin, 0)].get(eta_bin)
             if not pt_eta_list: continue
-            pt_eta_array[pt_bin + 1, eta_bin] = pt_eta_list[par][par]
+            pt_eta_array[pt_bin + 1, eta_bin] = grabber(pt_eta_list)
     return pt_eta_array
 
 # ________________________________________________________________________

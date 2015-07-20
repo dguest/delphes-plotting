@@ -25,11 +25,11 @@ void AllPlanes::fill(const std::map<std::string, double>& variables) {
     nhist.second.fill(variables);
   }
 }
-void AllPlanes::save_to(H5::CommonFG& group, std::string subgroup) {
+void AllPlanes::save_to(H5::CommonFG& group, std::string subgroup) const {
   H5::Group out_group = group.createGroup(subgroup);
   save_to(out_group);
 }
-void AllPlanes::save_to(H5::CommonFG& group) {
+void AllPlanes::save_to(H5::CommonFG& group) const {
   for (const auto& nhist: _hists) {
     nhist.second.write_to(group, nhist.first);
   }

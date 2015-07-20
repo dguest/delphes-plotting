@@ -17,8 +17,8 @@ class AllPlanes
 public:
   AllPlanes(const std::vector<Axis>& list);
   void fill(const std::map<std::string, double>& variables);
-  void save_to(H5::CommonFG& , std::string subgroup);
-  void save_to(H5::CommonFG&);
+  void save_to(H5::CommonFG& , std::string subgroup) const;
+  void save_to(H5::CommonFG&) const;
 private:
   std::vector<std::pair<std::string,Histogram> > _hists;
 };

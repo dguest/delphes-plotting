@@ -129,16 +129,25 @@ int main(int argc, char *argv[])
     for (int i_jet = 0; i_jet < n_jets; i_jet++) {
       Jet* jet = root::as<Jet>(bJets->At(i_jet));
       bool b_label = jet->Flavor == 5;
-      all_planes.fill(var::get_var_map(jet));
+      auto const vars = var::get_var_map(jet);
+      all_planes.fill(vars);
       if (b_label) {
 	fill_vx_hists(hists, jet);
       }
+      if (!planes_by_flavor.count(jet->Flavor)) {
+	planes_by_flavor.emplace(jet->Flavor, var::all_vars);
+      }
+      planes_by_flavor.at(jet->Flavor).fill(vars);
     } // end loop over jets
   }   // end loop over events
 
   H5::H5File out_file(cli.out_name, H5F_ACC_EXCL);
   hists.save(out_file, "jet_vx");
   all_planes.save_to(out_file, "planes");
+  auto by_flavor = out_file.createGroup("planes_by_flavor");
+  for (const auto& fl_pls: planes_by_flavor){
+    fl_pls.second.save_to(by_flavor, std::to_string(fl_pls.first));
+  }
 
   return 0;
 

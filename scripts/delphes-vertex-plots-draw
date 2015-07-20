@@ -4,6 +4,7 @@ import os, sys
 import numpy as np
 import h5py
 import argparse
+import math
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -46,12 +47,21 @@ def run():
         for pl_name, (arr, axes) in other.items():
             others_dict[pl_name] += arr
 
+    def opath(base):
+        out_name = base + '.' + args.ext.lstrip('.')
+        return os.path.join(args.output_dir, out_name)
+
     all_plot_names = list(charm_dict)
+    projected = set()
     for plname in all_plot_names:
-        out_name = plname + '.' + args.ext.lstrip('.')
-        opath = os.path.join(args.output_dir, out_name)
         rgb = bottom_dict[plname], charm_dict[plname], others_dict[plname]
-        draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath)
+        # draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath(plname))
+        xax = plname.split('_')[1]
+        if xax not in projected:
+            print(xax)
+            draw_xproj(*rgb, axis=axes_dict[plname][1], out_path=opath(xax),
+                       norm=True)
+            projected.add(xax)
 
 
 class Axis:
@@ -72,6 +82,14 @@ def get_axes(ds):
         the_ax = Axis(ax_props, ax)
         axes.append(the_ax)
     return axes
+
+def nth_largest(array, n):
+    # check for float, if that's what it is, treat it as a fraction of
+    # array length
+    if n % 1 != 0:
+        n = math.ceil(len(array) * n)
+    return np.sort(array)[-n]
+
 
 def _get_all_arrays(fp, label):
     """ return a dict of {name: (numpy_array, [axis, ...]), ...} """
@@ -97,23 +115,52 @@ def draw_rgb(red, green, blue, axes, out_path):
     ax.set_xlim(*xlims)
     ax.set_ylim(*ylims)
     _label_axes(ax, axes)
-    # _add_legend(ax)
-    # _add_atlas(ax, 0.02, 0.98, approval=approval)
-    # _add_sim_info(ax, 0.02, 0.38, size=10)
-    # xcut, ycut = ANTI_LIGHT_CUT, ANTI_B_CUT
-    # cutcolor = 'DarkGreen'
-    # _add_cut(ax, xcut, ycut, color=cutcolor)
-    # _annotate_cut(ax, xy=(3.5, ycut), xyt=(0.95, 0.05), color=cutcolor)
+    out_dir, out_file = os.path.split(out_path)
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+    canvas.print_figure(out_path, bbox_inches='tight')
+
+def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False):
+    rgb = np.dstack([red, green, blue]).sum(axis=0)
+    # crop off overflow
+    rgb = rgb[1:-1,:]
+
+    fig = Figure(figsize=(5.0,5.0*3/4))
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(1,1,1)
+    xlims = axis.lims
+    x_vals = np.linspace(*xlims, num=(rgb.shape[0] + 1))
+    y_lab = 'jets'
+    y_max = 0
+    # plot the stuff
+    for y_vals, color in zip(rgb.T, 'rgb'):
+        if norm:
+            y_vals /= y_vals.sum()
+            y_lab = 'fraction of jets'
+        ax.plot(x_vals, np.r_[y_vals, y_vals[-1]],
+                color=color, drawstyle='steps-post')
+        y_max = max(y_max, nth_largest(y_vals, 2))
+    ax.set_xlim(*xlims)
+    xname = axis.name
+    ax.set_xlabel(
+        '{} [{}]'.format(xname, axis.units) if axis.units else xname,
+        x=0.98, ha='right', size=_ax_size)
+    ax.set_ylabel(y_lab, y=0.98, ha='right', size=_ax_size)
+
+    if log:
+        ax.set_ylim(0.01 if norm else 1, ax.get_ylim()[1])
+        ax.set_yscale('log')
+    else:
+        ax.set_ylim(0, y_max*1.2)
+
     out_dir, out_file = os.path.split(out_path)
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
     canvas.print_figure(out_path, bbox_inches='tight')
 
 def _label_axes(ax, axes, size=12):
-    ax.set_xlabel(axes[0].name,
-                  x=0.98, ha='right', size=size)
-    ax.set_ylabel(axes[1].name,
-                  y=0.98, ha='right', size=size)
+    ax.set_xlabel(axes[0].name, x=0.98, ha='right', size=size)
+    ax.set_ylabel(axes[1].name, y=0.98, ha='right', size=size)
 
 def _add_legend(ax):
     rgb_patch = [Patch(color=x) for x in 'rgb']

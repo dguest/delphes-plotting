@@ -5,6 +5,7 @@ import numpy as np
 import h5py
 import argparse
 import math
+from delphes.plotutils import FauxLogLocator, get_axes, fauxify
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -67,24 +68,6 @@ def run():
             projected.add(xax)
 
 
-class Axis:
-    def __init__(self, prop_list, array):
-        self.name = array[prop_list.index('name')]
-        self.lims = [array[prop_list.index(x)] for x in ['min', 'max']]
-        self.units = array[prop_list.index('units')]
-    def __str__(self):
-        prints = [self.name] + list(self.lims) + [self.units]
-        return 'name: {}, range: {}-{}, units {}'.format(
-            *(str(x) for x in prints))
-
-def get_axes(ds):
-    axes_ar = ds.attrs['axes']
-    ax_props = axes_ar.dtype.names
-    axes = []
-    for ax in axes_ar:
-        the_ax = Axis(ax_props, ax)
-        axes.append(the_ax)
-    return axes
 
 def nth_largest(array, n):
     # check for float, if that's what it is, treat it as a fraction of
@@ -147,8 +130,9 @@ def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False,
                 label=leg[color])
         y_max = max(y_max, nth_largest(y_vals, 2))
     ax.set_xlim(*xlims)
+    xunit = fauxify(ax.get_xaxis(), axis.units, minval=0.1)
     xname = axis.name
-    ax.set_xlabel(axis_name(axis), x=0.98, ha='right', size=_ax_size)
+    ax.set_xlabel(axis_name(axis, xunit), x=0.98, ha='right', size=_ax_size)
     ax.set_ylabel(y_lab, y=0.98, ha='right', size=_ax_size)
 
     if log:
@@ -163,13 +147,15 @@ def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False,
         os.mkdir(out_dir)
     canvas.print_figure(out_path, bbox_inches='tight')
 
-def axis_name(axis):
-    nm, un = axis.name, axis.units
+def axis_name(ax, units):
+    nm, un = ax.name, units
     return '{} [{}]'.format(nm, un) if un else nm
 
 def _label_axes(ax, axes, size=12):
-    ax.set_xlabel(axis_name(axes[0]), x=0.98, ha='right', size=size)
-    ax.set_ylabel(axis_name(axes[1]), y=0.98, ha='right', size=size)
+    xunit = axes[0].fauxify(ax.get_xaxis())
+    yunit = axes[1].fauxify(ax.get_yaxis())
+    ax.set_xlabel(axis_name(axes[0], xunit), x=0.98, ha='right', size=size)
+    ax.set_ylabel(axis_name(axes[1], yunit), y=0.98, ha='right', size=size)
 
 def _add_legend(ax):
     rgb_patch = [Patch(color=x) for x in 'rgb']

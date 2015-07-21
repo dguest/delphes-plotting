@@ -1,14 +1,78 @@
+from matplotlib.ticker import Locator, FuncFormatter
+import numpy as np
+import math
 
+class Axis:
+    def __init__(self, prop_list, array):
+        self.name = array[prop_list.index('name')]
+        self.lims = [array[prop_list.index(x)] for x in ['min', 'max']]
+        self._units = array[prop_list.index('units')]
+    def __str__(self):
+        prints = [self.name] + list(self.lims) + [self._units]
+        return 'name: {}, range: {}-{}, units {}'.format(
+            *(str(x) for x in prints))
+    @property
+    def units(self):
+        return self._units
+    def fauxify(self, axis):
+        if 'log1p' in self._units:
+            return fauxify(axis, self._units)
+        return self._units
 
-# note: want to override this class to give locactions on log1p axes
+def fauxify(axis, units=None, minval=None):
+    axis.set_minor_locator(FauxLogLocator(subs=np.r_[1:5], numdecs=2))
+    axis.set_major_locator(FauxLogLocator(minval=minval))
+    formatter = FuncFormatter(_faux_log_formatting)
+    axis.set_major_formatter(formatter)
+    if units:
+        less = [x for x in units.split() if x != 'log1p']
+        faux_units = ' '.join(less)
+        return faux_units
+
+def get_axes(ds):
+    axes_ar = ds.attrs['axes']
+    ax_props = axes_ar.dtype.names
+    axes = []
+    for ax in axes_ar:
+        the_ax = Axis(ax_props, ax)
+        axes.append(the_ax)
+    return axes
+
+def _exp1m(val):
+    return math.exp(val) - 1
+
+def _faux_log_formatting(value, pos):
+    value = _exp1m(value)
+    if value == 0:
+        return r'0'
+    roundlog = round(math.log(abs(value), 10))
+    roundval = 10**roundlog
+    if not np.isclose(roundval, abs(value)):
+        return ''
+    if np.isclose(roundval, 0.1):
+        return r'0.1'
+    if roundval == 1:
+        base = math.copysign(1, value)
+        exp = ''
+    elif roundval == 10:
+        base = math.copysign(10, value)
+        exp = ''
+    else:
+        base = math.copysign(10, value)
+        exp = round(math.log(abs(value),10))
+    if not exp:
+        return r'{:.0f}'.format(base)
+    return r'{:.0f}$^{{\mathdefault{{ {} }} }}$'.format(base, exp)
+
 # see more here: https://github.com/matplotlib/matplotlib/blob/master/lib/matplotlib/ticker.py#L930
 
-class LogLocator(Locator):
+class FauxLogLocator(Locator):
     """
     Determine the tick locations for log axes
     """
 
-    def __init__(self, base=10.0, subs=[1.0], numdecs=4, numticks=15):
+    def __init__(self, base=10.0, subs=[1.0], numdecs=4, numticks=15,
+                 minval=None):
         """
         place ticks on the location= base**i*subs[j]
         """
@@ -16,6 +80,7 @@ class LogLocator(Locator):
         self.subs(subs)
         self.numticks = numticks
         self.numdecs = numdecs
+        self.minval = minval
 
     def set_params(self, base=None, subs=None, numdecs=None, numticks=None):
         """Set parameters within this locator."""
@@ -49,6 +114,7 @@ class LogLocator(Locator):
         return self.tick_values(vmin, vmax)
 
     def tick_values(self, vmin, vmax):
+        vmin, vmax = (_exp1m(x) for x in (vmin, vmax))
         b = self._base
         # dummy axis has no axes attribute
         if hasattr(self.axis, 'axes') and self.axis.axes.name == 'polar':
@@ -103,10 +169,14 @@ class LogLocator(Locator):
             else:
                 ticklocs = b ** decades
 
-        return self.raise_if_exceeds(np.asarray(ticklocs))
+        if self.minval is not None:
+            ticklocs = ticklocs[ticklocs > math.log1p(self.minval)]
+
+        return self.raise_if_exceeds(np.log1p(np.asarray(ticklocs)))
 
     def view_limits(self, vmin, vmax):
         'Try to choose the view limits intelligently'
+        vmin, vmax = (_exp1m(x) for x in (vmin, vmax))
         b = self._base
 
         if vmax < vmin:
@@ -136,4 +206,4 @@ class LogLocator(Locator):
             vmin = decade_down(vmin, self._base)
             vmax = decade_up(vmax, self._base)
         result = mtransforms.nonsingular(vmin, vmax)
-        return result
+        return np.log1p(result)

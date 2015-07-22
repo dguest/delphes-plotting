@@ -1,9 +1,9 @@
-#ifndef ROOT
-#define ROOT
+#ifndef ROOT_HH
+#define ROOT_HH
 
 // ROOT utility functions to load things safely
+#include "TClass.h"
 
-#include "TObject.h"
 #include <stdexcept>
 #include <string>
 

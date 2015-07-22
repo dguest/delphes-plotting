@@ -88,7 +88,7 @@ namespace var {
 void fill_vx_hists(Hists& hists, const Jet* jet) {
   TLorentzVector jvec;
   jvec.SetPtEtaPhiM(jet->PT, jet->Eta, jet->Phi, jet->Mass);
-  hists.vertex_mass.fill(jet->SecondaryVertexMass);
+  // hists.vertex_mass.fill(jet->SecondaryVertexMass);
 }
 
 // ____________________________________________________
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
       if (b_label) {
 	fill_vx_hists(hists, jet);
       }
-      if (jet->SecondaryVertexNtracks == -1) {
+      if (jet->SecondaryVertices.size() == 0) {
 	counter["jets with no vertex"]++;
       } else {
 	if (!planes_by_flavor.count(jet->Flavor)) {
@@ -167,11 +167,11 @@ namespace var {
     return {
       {PT.name, jet->PT},
       {ETA.name, jet->Eta},
-      {LXY.name, std::log1p(jet->SecondaryVertexLxy)},
-      {LSIG.name, std::log1p(jet->SecondaryVertexLsig)},
-      {EFRC.name, jet->SecondaryVertexEfrac},
-      {MASS.name, jet->SecondaryVertexMass},
-      {NTRK.name, jet->SecondaryVertexNtracks}
+      // {LXY.name, std::log1p(jet->SecondaryVertexLxy)},
+      // {LSIG.name, std::log1p(jet->SecondaryVertexLsig)},
+      // {EFRC.name, jet->SecondaryVertexEfrac},
+      // {MASS.name, jet->SecondaryVertexMass},
+      // {NTRK.name, jet->SecondaryVertexNtracks}
     };
   }
 }

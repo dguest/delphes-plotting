@@ -152,8 +152,8 @@ def axis_name(ax, units):
     return '{} [{}]'.format(nm, un) if un else nm
 
 def _label_axes(ax, axes, size=12):
-    xunit = axes[0].fauxify(ax.get_xaxis())
-    yunit = axes[1].fauxify(ax.get_yaxis())
+    xunit = fauxify(ax.get_xaxis(), axes[0].units)
+    yunit = fauxify(ax.get_yaxis(), axes[1].units)
     ax.set_xlabel(axis_name(axes[0], xunit), x=0.98, ha='right', size=size)
     ax.set_ylabel(axis_name(axes[1], yunit), y=0.98, ha='right', size=size)
 

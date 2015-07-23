@@ -2,23 +2,30 @@ from matplotlib.ticker import Locator, FuncFormatter
 import numpy as np
 import math
 
+# __________________________________________________________________________
+# axes class from ndhist
+def get_axes(ds):
+    """returns a list of axes from a Dataset produced via ndhist"""
+    axes_ar = ds.attrs['axes']
+    ax_props = axes_ar.dtype.names
+    axes = []
+    for ax in axes_ar:
+        the_ax = Axis(ax_props, ax)
+        axes.append(the_ax)
+    return axes
+
 class Axis:
     def __init__(self, prop_list, array):
         self.name = array[prop_list.index('name')]
         self.lims = [array[prop_list.index(x)] for x in ['min', 'max']]
-        self._units = array[prop_list.index('units')]
+        self.units = array[prop_list.index('units')]
     def __str__(self):
-        prints = [self.name] + list(self.lims) + [self._units]
+        prints = [self.name] + list(self.lims) + [self.units]
         return 'name: {}, range: {}-{}, units {}'.format(
             *(str(x) for x in prints))
-    @property
-    def units(self):
-        return self._units
-    def fauxify(self, axis):
-        if 'log1p' in self._units:
-            return fauxify(axis, self._units)
-        return self._units
 
+# _________________________________________________________________________
+# stuff to deal with log1p axes
 def fauxify(axis, units=None, minval=None):
     axis.set_minor_locator(FauxLogLocator(subs=np.r_[1:5], numdecs=2))
     axis.set_major_locator(FauxLogLocator(minval=minval))
@@ -29,14 +36,6 @@ def fauxify(axis, units=None, minval=None):
         faux_units = ' '.join(less)
         return faux_units
 
-def get_axes(ds):
-    axes_ar = ds.attrs['axes']
-    ax_props = axes_ar.dtype.names
-    axes = []
-    for ax in axes_ar:
-        the_ax = Axis(ax_props, ax)
-        axes.append(the_ax)
-    return axes
 
 def _exp1m(val):
     return math.exp(val) - 1

@@ -27,15 +27,15 @@ class Axis:
 # _________________________________________________________________________
 # stuff to deal with log1p axes
 def fauxify(axis, units=None, minval=None):
-    axis.set_minor_locator(FauxLogLocator(subs=np.r_[1:5], numdecs=2))
-    axis.set_major_locator(FauxLogLocator(minval=minval))
-    formatter = FuncFormatter(_faux_log_formatting)
-    axis.set_major_formatter(formatter)
-    if units:
+    if 'log1p' in units:
+        axis.set_minor_locator(FauxLogLocator(subs=np.r_[1:5], numdecs=2))
+        axis.set_major_locator(FauxLogLocator(minval=minval))
+        formatter = FuncFormatter(_faux_log_formatting)
+        axis.set_major_formatter(formatter)
         less = [x for x in units.split() if x != 'log1p']
         faux_units = ' '.join(less)
         return faux_units
-
+    return units
 
 def _exp1m(val):
     return math.exp(val) - 1

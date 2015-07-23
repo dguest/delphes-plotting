@@ -32,7 +32,7 @@ def run():
     args = _get_args()
 
     with h5py.File(args.input_file, 'r') as h5file:
-        fp = h5file['planes_by_flavor']
+        fp = h5file['jets']
         charm = _get_all_arrays(fp, 4)
         bottom = _get_all_arrays(fp, 5)
         others = [_get_all_arrays(fp, x) for x in fp if x not in '45']
@@ -104,6 +104,7 @@ def draw_rgb(red, green, blue, axes, out_path):
     out_dir, out_file = os.path.split(out_path)
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
+    print('printing {}'.format(out_path))
     canvas.print_figure(out_path, bbox_inches='tight')
 
 _def_leg = dict(red='bottom', green='charm', blue='light')
@@ -138,7 +139,7 @@ def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False,
     if log:
         ax.set_ylim(0.01 if norm else 1, ax.get_ylim()[1])
         ax.set_yscale('log')
-    else:
+    elif x_vals.size > 20:
         ax.set_ylim(0, y_max*1.2)
     ax.legend(frameon=False)
 

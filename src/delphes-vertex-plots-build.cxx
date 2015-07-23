@@ -7,19 +7,15 @@
 #include <deque>
 
 #include "root.hh"
+#include "AllPlanes.hh"
 
 #include "TFile.h"
-
 #include "TClonesArray.h"
-
 #include "classes/DelphesClasses.h"
-
 #include "ExRootTreeReader.h"
 
 #include "misc_func.hh" 	// cli
 // #include "truth_tools.hh"
-
-#include "AllPlanes.hh"
 
 #include "H5Cpp.h"
 #include "Axis.hh"
@@ -51,7 +47,9 @@ namespace var {
   const Axis MASS = {"mass", 100, 0, 15, "GeV"};
   const Axis NTRK = {"ntrk", MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, ""};
   const Axis NVTX = {"nvtx", MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""};
-  const Axes vx_vars{PT, ETA, LXY, LSIG, EFRC, MASS, NTRK};
+  const Axis VXN  = {"vxn" , MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""};
+  const Axis DRJV = {"drjv", 100, 0, 4};
+  const Axes vx_vars{PT, ETA, LXY, LSIG, EFRC, MASS, NTRK, DRJV, VXN};
   const Axes jet_vars{PT, ETA, NVTX};
   // const std::vector<Axis> all_vars{PT, ETA, LXY, EFRC, MASS, NTRK};
   const DMap jet_var_map(const Jet* jet);
@@ -59,46 +57,50 @@ namespace var {
 }
 
 // === misc utility functions ===
-std::map<std::string, std::vector<SecondaryVertex> > sort_by_algo(
-  const std::vector<SecondaryVertex>& input) {
-  std::map<std::string, std::vector<SecondaryVertex> > out;
-  for (auto vx: input) {
-    out[vx.config].push_back(vx);
+namespace {
+  std::map<std::string, std::vector<SecondaryVertex> > sort_by_algo(
+    const std::vector<SecondaryVertex>& input) {
+    std::map<std::string, std::vector<SecondaryVertex> > out;
+    for (auto vx: input) {
+      out[vx.config].push_back(vx);
+    }
+    return out;
   }
-  return out;
-}
 
-bool less_significant(const SecondaryVertex& v1, const SecondaryVertex& v2) {
-  return v1.Lsig < v2.Lsig;
-}
+  bool less_significant(const SecondaryVertex& v1, const SecondaryVertex& v2) {
+    return v1.Lsig < v2.Lsig;
+  }
 
-typedef std::map<int,std::map<std::string,std::map<int, AllPlanes>>> VxMap;
+  typedef std::map<int,std::map<std::string,std::map<int, AllPlanes>>> VxMap;
+  typedef std::map<std::string, int> IMap;
 
-void fill_svx(VxMap& vx_map, const Jet& jet) {
-  for (const auto& algo_vx: sort_by_algo(jet.SecondaryVertices)){
-    const auto& algo = algo_vx.first;
-    auto vx_vec = algo_vx.second;
-    std::sort(vx_vec.begin(), vx_vec.end(), less_significant);
-    // go from most to least significant
-    std::reverse(vx_vec.begin(), vx_vec.end());
-    const int n_vx = vx_vec.size();
-    for (int iv = 0; iv < n_vx; iv++) {
-      auto vx_vars = var::vx_var_map(jet, vx_vec.at(iv));
-      for (auto& var: vx_vars) {
-	if (isnan(var.second)) {
-	  var.second = -1;
+  void fill_svx(VxMap& vx_map, const Jet& jet, IMap& counter) {
+    for (const auto& algo_vx: sort_by_algo(jet.SecondaryVertices)){
+      const auto& algo = algo_vx.first;
+      auto vx_vec = algo_vx.second;
+      std::sort(vx_vec.begin(), vx_vec.end(), less_significant);
+      // go from most to least significant
+      std::reverse(vx_vec.begin(), vx_vec.end());
+      const int n_vx = vx_vec.size();
+      for (int iv = 0; iv < n_vx; iv++) {
+	counter["n vtx"]++;
+	auto vx_vars = var::vx_var_map(jet, vx_vec.at(iv));
+	vx_vars[var::VXN.name] = iv;
+	if (isnan(vx_vars[var::LSIG.name])) {
+	  counter["nan vx sig"]++;
+	  vx_vars[var::LSIG.name] = -1;
 	}
-      }
-      auto& vert_map = vx_map[jet.Flavor][algo];
-      if (!vert_map.count(iv) ) {
-	vert_map.emplace(iv, var::vx_vars);
-      }
-      auto& hists = vert_map.at(iv);
-      hists.fill(vx_vars);
-    } // end vx loop
-  }   // end algo loop
-}
+	auto& vert_map = vx_map[jet.Flavor][algo];
+	if (!vert_map.count(iv) ) {
+	  vert_map.emplace(iv, var::vx_vars);
+	}
+	auto& hists = vert_map.at(iv);
+	hists.fill(vx_vars);
+      } // end vx loop
+    }   // end algo loop
+  }
 
+}
 // ____________________________________________________
 // main function
 
@@ -127,8 +129,10 @@ int main(int argc, char *argv[])
 
   // Loop over all events
   std::cout << "looping over " << numberOfEntries << " entries" << std::endl;
+  int onem = numberOfEntries / 1000;
   for(Int_t entry = 0; entry < numberOfEntries; ++entry)
   {
+    if (entry % onem == 0) std::cout << entry << " processed\r" << std::flush;
     // Load selected branches with data from specified event
     treeReader->ReadEntry(entry);
 
@@ -143,9 +147,10 @@ int main(int argc, char *argv[])
 	jets_by_flavor.emplace(jet->Flavor, var::jet_vars);
       }
       jets_by_flavor.at(jet->Flavor).fill(jet_vars);
-      fill_svx(vx_map, *jet);
+      fill_svx(vx_map, *jet, counter);
     } // end loop over jets
   }   // end loop over events
+  std::cout << std::endl;
 
   H5::H5File out_file(cli.out_name, H5F_ACC_EXCL);
   auto by_flavor = out_file.createGroup("jets");
@@ -186,6 +191,9 @@ namespace var {
     };
   } // end jet_var_map
   const DMap vx_var_map(const Jet& jet, const SecondaryVertex& vx) {
+    TVector3 jvec;
+    jvec.SetPtEtaPhi(jet.PT, jet.Eta, jet.Phi);
+    double drjv = jvec.DeltaR(vx);
     return {
       {PT.name, jet.PT},
       {ETA.name, jet.Eta},
@@ -193,7 +201,8 @@ namespace var {
       {LSIG.name, std::log1p(vx.Lsig)},
       {EFRC.name, vx.eFrac},
       {MASS.name, vx.mass},
-      {NTRK.name, vx.nTracks}
+      {NTRK.name, vx.nTracks},
+      {DRJV.name, drjv}
     };
   } // end vx_var_map
 }

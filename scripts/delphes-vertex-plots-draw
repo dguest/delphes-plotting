@@ -52,14 +52,16 @@ def run():
         out_name = base + '.' + args.ext.lstrip('.')
         return os.path.join(args.output_dir, out_name)
 
-    all_plot_names = list(charm_dict)
+    _print_rgb(bottom_dict, charm_dict, bottom_dict, axes_dict, opath)
+
+def _print_rgb(red, green, blue, axes_dict, opath):
+    all_plot_names = list(green)
     projected = set()
     for plname in all_plot_names:
-        rgb = bottom_dict[plname], charm_dict[plname], others_dict[plname]
+        rgb = red[plname], green[plname], blue[plname]
         draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath(plname))
         xax = plname.split('_')[1]
         if xax not in projected:
-            print(xax)
             draw_xproj(*rgb, axis=axes_dict[plname][1], out_path=opath(xax),
                        norm=True)
             log_name = opath(xax + '_log')

@@ -83,7 +83,12 @@ void fill_svx(VxMap& vx_map, const Jet& jet) {
     std::reverse(vx_vec.begin(), vx_vec.end());
     const int n_vx = vx_vec.size();
     for (int iv = 0; iv < n_vx; iv++) {
-      const auto vx_vars = var::vx_var_map(jet, vx_vec.at(iv));
+      auto vx_vars = var::vx_var_map(jet, vx_vec.at(iv));
+      for (auto& var: vx_vars) {
+	if (isnan(var.second)) {
+	  var.second = -1;
+	}
+      }
       auto& vert_map = vx_map[jet.Flavor][algo];
       if (!vert_map.count(iv) ) {
 	vert_map.emplace(iv, var::vx_vars);
@@ -154,7 +159,7 @@ int main(int argc, char *argv[])
     for (const auto& algo_itr: flav_itr.second) {
       auto vx_group = algo_group.createGroup(algo_itr.first);
       for (const auto& vx_itr: algo_itr.second) {
-	vx_itr.second.save_to(algo_group, std::to_string(vx_itr.first));
+	vx_itr.second.save_to(vx_group, std::to_string(vx_itr.first));
       }
     }
   }

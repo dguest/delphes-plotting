@@ -31,6 +31,7 @@ _pt = r'$p_{\rm T}$'
 _ax_size = 12
 _text_size = 12
 _dphi = r'$\Delta \phi$'
+_def_leg = dict(red='bottom', green='charm', blue='light')
 
 def run():
     args = _get_args()
@@ -47,8 +48,24 @@ def _print_vertex_plots(args):
         merged_flavors = _get_merged(fp[flavors[0]], others)
 
     merged_vertex = {}
-    # for algo, vx_group in merged_flavors.items():
-    #     base_vx
+    for algo, vx_group in merged_flavors.items():
+        vx_list = list(vx_group)
+        others = (vx_group[nvx] for nvx in vx_list[1:])
+        merged_vertex[algo] = _get_merged(vx_group[vx_list[0]], others)
+
+    def get_hist_dict(algo):
+        return {n:a['hist'] for n,a in merged_vertex[algo].items()}
+    avf = get_hist_dict('avf')
+    avr = get_hist_dict('avr')
+    kal = get_hist_dict('kalman')
+    leg = {'red':'kalman', 'green':'AVR', 'blue':'AVF'}
+    ax_dict = {n: a['axes'] for n, a in merged_vertex['avf'].items()}
+
+    def opath(base):
+        out_name = base + '.' + args.ext.lstrip('.')
+        return os.path.join(args.output_dir, out_name)
+
+    _print_rgb(kal, avr, avf, ax_dict, opath, leg=leg)
 
 def _print_jet_plots(args):
     with h5py.File(args.input_file, 'r') as h5file:
@@ -58,12 +75,12 @@ def _print_jet_plots(args):
         others = [_get_all_arrays(fp, x) for x in fp if x not in '45']
 
     # get a dict of axis properties
-    axes_dict = {n: a[1] for n, a in charm.items()}
+    axes_dict = {n: a['axes'] for n, a in charm.items()}
 
     # get dicts of the form {name: array, ...}
-    charm_dict = {n: a[0] for n, a in charm.items()}
-    bottom_dict = {n: a[0] for n, a in bottom.items()}
-    others_dict = {n: a[0] for n, a in others[0].items()}
+    charm_dict = {n: a['hist'] for n, a in charm.items()}
+    bottom_dict = {n: a['hist'] for n, a in bottom.items()}
+    others_dict = {n: a['hist'] for n, a in others[0].items()}
     for other in others[1:]:
         for pl_name, (arr, axes) in other.items():
             others_dict[pl_name] += arr
@@ -74,7 +91,7 @@ def _print_jet_plots(args):
 
     _print_rgb(bottom_dict, charm_dict, bottom_dict, axes_dict, opath)
 
-def _print_rgb(red, green, blue, axes_dict, opath):
+def _print_rgb(red, green, blue, axes_dict, opath, leg=_def_leg):
     """
     each color should be a dict of {plot_name: np_array, ...}
     each plot_name should have an entry in axes_dict too
@@ -86,13 +103,11 @@ def _print_rgb(red, green, blue, axes_dict, opath):
         draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath(plname))
         xax = plname.split('_')[1]
         if xax not in projected:
-            draw_xproj(*rgb, axis=axes_dict[plname][1], out_path=opath(xax),
-                       norm=True)
+            opts = dict(leg=leg, axis=axes_dict[plname][1])
+            draw_xproj(*rgb, out_path=opath(xax), norm=True, **opts)
             log_name = opath(xax + '_log')
-            draw_xproj(*rgb, axis=axes_dict[plname][1], out_path=log_name,
-                       log=True)
+            draw_xproj(*rgb, out_path=log_name, log=True, **opts)
             projected.add(xax)
-
 
 
 def nth_largest(array, n):
@@ -105,7 +120,6 @@ def nth_largest(array, n):
 def _get_merged(base, merge):
     base_dict = _numpify(base)
     for added in merge:
-        print('merging ' + str(added))
         _add_arrays(base_dict, added)
     return base_dict
 
@@ -134,7 +148,7 @@ def _add_arrays(base, added):
 def _get_all_arrays(fp, label):
     """ return a dict of {name: (numpy_array, [axis, ...]), ...} """
     lab = str(label)
-    return {n:(np.array(a), get_axes(a)) for n, a in fp[lab].items()}
+    return {n:_numpify(a) for n, a in fp[lab].items()}
 
 def draw_rgb(red, green, blue, axes, out_path):
     rgb = np.dstack([red, green, blue])
@@ -161,7 +175,6 @@ def draw_rgb(red, green, blue, axes, out_path):
     print('printing {}'.format(out_path))
     canvas.print_figure(out_path, bbox_inches='tight')
 
-_def_leg = dict(red='bottom', green='charm', blue='light')
 def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False,
                leg=_def_leg):
     rgb = np.dstack([red, green, blue]).sum(axis=0)

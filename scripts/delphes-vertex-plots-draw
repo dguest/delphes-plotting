@@ -17,6 +17,10 @@ def _get_args():
     parser.add_argument('input_file')
     parser.add_argument('output_dir', nargs='?', default='test')
     parser.add_argument('-e', '--ext', default='pdf', help=d)
+    bopt = dict(action='store_true')
+    plots = parser.add_mutually_exclusive_group(required=True)
+    plots.add_argument('-j', '--jet', help='jet plots', **bopt)
+    plots.add_argument('-v', '--vertex', help='vx plots', **bopt)
     args = parser.parse_args()
     return args
 
@@ -30,7 +34,23 @@ _dphi = r'$\Delta \phi$'
 
 def run():
     args = _get_args()
+    if args.jet:
+        _print_jet_plots(args)
+    if args.vertex:
+        _print_vertex_plots(args)
 
+def _print_vertex_plots(args):
+    with h5py.File(args.input_file, 'r') as h5file:
+        fp = h5file['vx']
+        flavors = list(fp.keys())
+        others = (fp[flav] for flav in flavors[1:])
+        merged_flavors = _get_merged(fp[flavors[0]], others)
+
+    merged_vertex = {}
+    # for algo, vx_group in merged_flavors.items():
+    #     base_vx
+
+def _print_jet_plots(args):
     with h5py.File(args.input_file, 'r') as h5file:
         fp = h5file['jets']
         charm = _get_all_arrays(fp, 4)
@@ -55,6 +75,10 @@ def run():
     _print_rgb(bottom_dict, charm_dict, bottom_dict, axes_dict, opath)
 
 def _print_rgb(red, green, blue, axes_dict, opath):
+    """
+    each color should be a dict of {plot_name: np_array, ...}
+    each plot_name should have an entry in axes_dict too
+    """
     all_plot_names = list(green)
     projected = set()
     for plname in all_plot_names:
@@ -78,6 +102,34 @@ def nth_largest(array, n):
         n = math.ceil(len(array) * n)
     return np.sort(array.flatten())[-n]
 
+def _get_merged(base, merge):
+    base_dict = _numpify(base)
+    for added in merge:
+        print('merging ' + str(added))
+        _add_arrays(base_dict, added)
+    return base_dict
+
+def _numpify(base):
+    if type(base) == dict:
+        return base
+    if type(base) != h5py.Group:
+        return dict(hist=np.array(base), axes=get_axes(base))
+    return {n: _numpify(v) for n, v in base.items()}
+
+def _add_arrays(base, added):
+    try:
+        # first case: base has a 'hist' entry
+        base_hist = base['hist']
+        try:
+            base_hist += added['hist']
+        except ValueError:
+            base_hist += np.asarray(added)
+        return
+    except KeyError:
+        # second case: base has sub-entries
+        for sub in base:
+            if sub not in added: continue
+            _add_arrays(base[sub], added[sub])
 
 def _get_all_arrays(fp, label):
     """ return a dict of {name: (numpy_array, [axis, ...]), ...} """

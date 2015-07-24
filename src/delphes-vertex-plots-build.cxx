@@ -49,7 +49,7 @@ namespace var {
   const Axis NVTX = {"nvtx", MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""};
   const Axis VXN  = {"vxn" , MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""};
   const Axis DRJV = {"drjv", 100, 0, 4};
-  const Axes vx_vars{PT, ETA, LXY, LSIG, EFRC, MASS, NTRK, DRJV, VXN};
+  const Axes vx_vars{PT, ETA, LXY, LSIG, EFRC, MASS, NTRK, DRJV, VXN, NVTX};
   const Axes jet_vars{PT, ETA, NVTX};
   // const std::vector<Axis> all_vars{PT, ETA, LXY, EFRC, MASS, NTRK};
   const DMap jet_var_map(const Jet* jet);
@@ -86,6 +86,7 @@ namespace {
 	counter["n vtx"]++;
 	auto vx_vars = var::vx_var_map(jet, vx_vec.at(iv));
 	vx_vars[var::VXN.name] = iv;
+	vx_vars[var::NVTX.name] = n_vx;
 	if (isnan(vx_vars[var::LSIG.name])) {
 	  counter["nan vx sig"]++;
 	  vx_vars[var::LSIG.name] = -1;

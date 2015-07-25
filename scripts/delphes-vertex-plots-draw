@@ -124,9 +124,10 @@ def _get_merged(base, merge):
     return base_dict
 
 def _numpify(base):
+    """convert everything to nested dicts"""
     if type(base) == dict:
         return base
-    if type(base) != h5py.Group:
+    if hasattr(base, 'attrs') and 'axes' in base.attrs:
         return dict(hist=np.array(base), axes=get_axes(base))
     return {n: _numpify(v) for n, v in base.items()}
 

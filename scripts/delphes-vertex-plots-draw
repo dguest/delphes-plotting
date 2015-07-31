@@ -101,9 +101,9 @@ def _print_rgb(red, green, blue, axes_dict, opath, leg=_def_leg):
     for plname in all_plot_names:
         rgb = red[plname], green[plname], blue[plname]
         draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath(plname))
-        xax = plname.split('_')[1]
+        xax = plname.split('_')[0]
         if xax not in projected:
-            opts = dict(leg=leg, axis=axes_dict[plname][1])
+            opts = dict(leg=leg, axis=axes_dict[plname][0])
             draw_xproj(*rgb, out_path=opath(xax), norm=True, **opts)
             log_name = opath(xax + '_log')
             draw_xproj(*rgb, out_path=log_name, log=True, **opts)
@@ -178,7 +178,7 @@ def draw_rgb(red, green, blue, axes, out_path):
 
 def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False,
                leg=_def_leg):
-    rgb = np.dstack([red, green, blue]).sum(axis=0)
+    rgb = np.dstack([red, green, blue]).sum(axis=1)
     # crop off overflow
     rgb = rgb[1:-1,:]
 
@@ -214,6 +214,7 @@ def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False,
     out_dir, out_file = os.path.split(out_path)
     if not os.path.isdir(out_dir):
         os.mkdir(out_dir)
+    print('printing {}'.format(out_path))
     canvas.print_figure(out_path, bbox_inches='tight')
 
 def axis_name(ax, units):

@@ -5,7 +5,7 @@ import numpy as np
 import h5py
 import argparse
 import math
-from delphes.plotutils import FauxLogLocator, get_axes, fauxify
+from delphes.plotutils import FauxLogLocator, fauxify, Hist, is_h5_hist
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -62,14 +62,14 @@ def _print_algo_plots(args, alg='avr'):
     others = merge(_get_merged(next(the_others), the_others))
 
     leg = {'red':'bottom', 'green':'charm', 'blue':'light'}
-    ax_dict = {n: a['axes'] for n, a in others.items()}
+    ax_dict = {n: a.axes for n, a in others.items()}
 
     def opath(base):
         out_name = '_'.join([alg, base]) + '.' + args.ext.lstrip('.')
         return os.path.join(args.output_dir, out_name)
 
     def ar(hdict):
-        return {n:a['hist'] for n, a in hdict.items()}
+        return {n:a.hist for n, a in hdict.items()}
 
     _print_rgb(ar(bottom), ar(charm), ar(others), ax_dict, opath, leg=leg)
 
@@ -89,12 +89,12 @@ def _print_vertex_plots(args):
         merged_vertex[algo] = _get_merged(vx_group[vx_list[0]], others)
 
     def get_hist_dict(algo):
-        return {n:a['hist'] for n,a in merged_vertex[algo].items()}
+        return {n:a.hist for n,a in merged_vertex[algo].items()}
     avf = get_hist_dict('avf')
     avr = get_hist_dict('avr')
     kal = get_hist_dict('kalman')
     leg = {'red':'kalman', 'green':'AVR', 'blue':'AVF'}
-    ax_dict = {n: a['axes'] for n, a in merged_vertex['avf'].items()}
+    ax_dict = {n: a.axes for n, a in merged_vertex['avf'].items()}
 
     def opath(base):
         out_name = base + '.' + args.ext.lstrip('.')
@@ -110,12 +110,12 @@ def _print_jet_plots(args):
         others = [_get_all_arrays(fp, x) for x in fp if x not in '45']
 
     # get a dict of axis properties
-    axes_dict = {n: a['axes'] for n, a in charm.items()}
+    axes_dict = {n: a.axes for n, a in charm.items()}
 
     # get dicts of the form {name: array, ...}
-    charm_dict = {n: a['hist'] for n, a in charm.items()}
-    bottom_dict = {n: a['hist'] for n, a in bottom.items()}
-    others_dict = {n: a['hist'] for n, a in others[0].items()}
+    charm_dict = {n: a.hist for n, a in charm.items()}
+    bottom_dict = {n: a.hist for n, a in bottom.items()}
+    others_dict = {n: a.hist for n, a in others[0].items()}
     for other in others[1:]:
         for pl_name, (arr, axes) in other.items():
             others_dict[pl_name] += arr
@@ -159,12 +159,6 @@ def _get_merged(base, merge):
         _add_arrays(base_dict, added)
     return base_dict
 
-class Hist:
-    """very simple wrapper for histogram info"""
-    def __init__(self, base):
-        self.hist = np.asarray(base)
-        self.axes = get_axes(base)
-
 def _numpify(base, follow=[]):
     """
     Convert everything to nested dicts.
@@ -174,8 +168,8 @@ def _numpify(base, follow=[]):
     """
     if type(base) == dict:
         return base
-    if hasattr(base, 'attrs') and 'axes' in base.attrs:
-        return dict(hist=np.array(base), axes=get_axes(base))
+    if is_h5_hist(base):
+        return Hist(base)
     selection = follow[0] if len(follow) > 0 else ''
     if selection:
         return {selection: _numpify(base[selection])}
@@ -184,13 +178,13 @@ def _numpify(base, follow=[]):
 def _add_arrays(base, added):
     try:
         # first case: base has a 'hist' entry
-        base_hist = base['hist']
+        base_hist = base.hist
         try:
-            base_hist += added['hist']
-        except ValueError:
+            base_hist += added.hist
+        except AttributeError:
             base_hist += np.asarray(added)
         return
-    except KeyError:
+    except AttributeError:
         # second case: base has sub-entries
         for sub in base:
             if sub not in added: continue

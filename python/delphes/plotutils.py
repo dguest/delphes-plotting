@@ -3,7 +3,21 @@ import numpy as np
 import math
 
 # __________________________________________________________________________
-# axes class from ndhist
+# Hist class from ndhist
+def is_h5_hist(base):
+    return hasattr(base, 'attrs') and 'axes' in base.attrs
+
+class Hist:
+    """very simple wrapper for histogram info"""
+    def __init__(self, base):
+        self.hist = np.asarray(base)
+        self.axes = get_axes(base)
+    def __str__(self):
+        return '{}-dim hist'.format(len(self.axes))
+    def __repr__(self):
+        axes = ' vs '.join([x.name for x in self.axes])
+        return 'Histogram[{}]'.format(axes)
+
 def get_axes(ds):
     """returns a list of axes from a Dataset produced via ndhist"""
     axes_ar = ds.attrs['axes']

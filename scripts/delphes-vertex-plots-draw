@@ -135,9 +135,10 @@ def _print_rgb(red, green, blue, axes_dict, opath, leg=_def_leg):
     projected = set()
     for plname in all_plot_names:
         rgb = red[plname], green[plname], blue[plname]
-        draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath(plname),
-                 leg=leg)
-        xax = plname.split('_')[0]
+        if len(rgb[0].shape) == 3:
+            draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath(plname),
+                     leg=leg)
+        xax = plname if '_' not in plname else plname.split('_')[0]
         if xax not in projected:
             opts = dict(leg=leg, axis=axes_dict[plname][0])
             draw_xproj(*rgb, out_path=opath(xax), norm=True, **opts)
@@ -232,7 +233,10 @@ def _add_rgb_legend(ax, leg):
 
 def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False,
                leg=_def_leg):
-    rgb = np.dstack([red, green, blue]).sum(axis=1)
+    if len(red.shape) == 3:
+        rgb = np.dstack([red, green, blue]).sum(axis=1)
+    else:
+        rgb = np.vstack([red, green, blue]).T
     # crop off overflow
     rgb = rgb[1:-1,:]
 

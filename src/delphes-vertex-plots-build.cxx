@@ -100,7 +100,7 @@ namespace {
 	}
 	auto& vert_map = vx_map[jet.Flavor][algo];
 	if (!vert_map.count(iv) ) {
-	  vert_map.emplace(iv, var::vx_vars);
+	  vert_map.emplace(iv, AllPlanes(var::vx_vars, true));
 	}
 	auto& hists = vert_map.at(iv);
 	hists.fill(vx_vars);

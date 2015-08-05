@@ -29,6 +29,14 @@ def _cov_as_list(cov_matrix):
         out.append(row)
     return out
 
+def _mean_as_list(mean_vector):
+    n_rows = mean_vector.GetNrows()
+    assert n_rows == 5
+    out = []
+    for row in xrange(n_rows):
+        out.append(mean_vector(row))
+    return out
+
 regtail = "_ptbin([0-9]{2})_etabin([0-9]{2})"
 covre = re.compile('^covmat' + regtail)
 meanre = re.compile('^meanvec' + regtail)
@@ -50,7 +58,8 @@ def _dump_titles(root_file):
     pt_bins = {}
     for key in ROOT.TIter(rfile.GetListOfKeys()):
         cov_match = covre.match(key.GetName())
-        if cov_match:
+        mean_match = meanre.match(key.GetName())
+        if cov_match or mean_match:
             title = key.ReadObj().GetTitle()
             print(key.GetName(), title)
 
@@ -64,17 +73,24 @@ if __name__ == '__main__':
         _dump_titles(rfile)
         sys.exit()
     cov_dict = {}
+    mean_dict = {}
     for key in ROOT.TIter(rfile.GetListOfKeys()):
         name = key.GetName()
         cov_match = covre.match(name)
         mean_match = meanre.match(name)
-        if cov_match:
-            ptbin, etabin = cov_match.group(1,2)
+        first_match = cov_match or mean_match
+        if first_match:
+            ptbin, etabin = first_match.group(1,2)
             obj = key.ReadObj()
+        if cov_match:
             covlist = _cov_as_list(obj)
             pt_dict = cov_dict.setdefault(int(ptbin), {})
-            # print(ptbin, len(pt_dict), len(cov_dict))
             pt_dict[int(etabin)] = covlist
+        elif mean_match:
+            mean_list = _mean_as_list(obj)
+            pt_dict = mean_dict.setdefault(int(ptbin), {})
+            pt_dict[int(etabin)] = mean_list
 
     # dump the info
-    print(json.dumps(cov_dict, indent=2, sort_keys=True))
+    out_dict = {'cov':cov_dict, 'mean': mean_dict}
+    print(json.dumps(out_dict , indent=2, sort_keys=True))

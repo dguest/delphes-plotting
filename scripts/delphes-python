@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+
+import site
+from os.path import isfile, isdir, join, abspath, split
+import os, sys
+import argparse
+
+def here_path():
+    return '/'.join(abspath(__file__).split('/')[:-2] + ['python'])
+
+def pth_file_path():
+    usr_path = site.getusersitepackages()
+    pth_file = join(usr_path, 'delphes.pth')
+    return pth_file
+
+def add_path():
+    pth_file_dir, pth_file = split(pth_file_path())
+    usr_path = here_path()
+    if not isdir(pth_file_dir):
+        os.makedirs(pth_file_dir)
+    with open(join(pth_file_dir,pth_file),'a+') as pfile:
+        pfile.seek(0)
+        for line in pfile:
+            if line.strip() == usr_path:
+                return
+        pfile.write(here_path() + '\n')
+
+def rm_path():
+    fp = pth_file_path()
+    if isfile(fp):
+        with open(fp, 'r') as pfile:
+            lines = set(l.strip() for l in pfile.readlines())
+            lines.discard(here_path())
+        if lines:
+            with open(fp, 'w') as pfile:
+                pfile.writelines(lines)
+        else:
+            os.remove(fp)
+
+def where():
+    print(pth_file_path())
+
+def test():
+    from delphes import test
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    opts = {
+        'install': add_path,
+        'remove': rm_path,
+        'where' :where,
+        'test': test
+    }
+    parser.add_argument('action', choices=opts)
+    args = parser.parse_args(sys.argv[1:])
+    opts[args.action]()

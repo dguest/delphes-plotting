@@ -1,0 +1,295 @@
+#!/usr/bin/env python3
+
+import os, sys
+import numpy as np
+import h5py
+import argparse
+import math
+from delphes.plotutils import FauxLogLocator, fauxify, Hist, is_h5_hist
+
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+from matplotlib.patches import Patch
+
+def _get_args():
+    d = 'default: %(default)s'
+    c = 'const: %(const)s'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file')
+    parser.add_argument('output_dir', nargs='?', default='test')
+    parser.add_argument('-e', '--ext', default='pdf', help=d)
+    bopt = dict(action='store_true')
+    plots = parser.add_mutually_exclusive_group(required=True)
+    plots.add_argument('-j', '--jet', help='jet plots', **bopt)
+    plots.add_argument('-v', '--vertex', help='vx plots', **bopt)
+    plots.add_argument(
+        '-a', '--alg', default=None, nargs='?', const='avr', help=c)
+    args = parser.parse_args()
+    return args
+
+_alias = dict(st=r'\sqrt{\sin \theta}')
+_ptdef = {'low': r'$0.4 < p_{{\rm T}} {st} < 0.5$'.format(**_alias),
+          'high': r'$p_{{\rm T}} {st} > 20$ GeV'.format(**_alias)}
+_pt = r'$p_{\rm T}$'
+_ax_size = 12
+_text_size = 12
+_dphi = r'$\Delta \phi$'
+_def_leg = dict(red='bottom', green='charm', blue='light')
+
+def run():
+    args = _get_args()
+    if args.jet:
+        _print_jet_plots(args)
+    if args.vertex:
+        _print_vertex_plots(args)
+    if args.alg:
+        _print_algo_plots(args)
+
+def _print_algo_plots(args, alg='avr'):
+    """print vertex plots for one algorithm, color-code by flavor"""
+    alg = args.alg
+    with h5py.File(args.input_file, 'r') as h5file:
+        fp = h5file['vx']
+        algo_plots = _numpify(fp, ['', alg])
+
+    def merge(dic):
+        idic = iter(dic.values())
+        return _get_merged(next(idic), idic)
+
+    bottom = merge(algo_plots['5'][alg])
+    charm = merge(algo_plots['4'][alg])
+    the_others = (algo_plots[x][alg] for x in algo_plots if x not in '45')
+    others = merge(_get_merged(next(the_others), the_others))
+
+    leg = {'red':'bottom', 'green':'charm', 'blue':'light'}
+    ax_dict = {n: a.axes for n, a in others.items()}
+
+    def opath(base):
+        out_name = '_'.join([alg, base]) + '.' + args.ext.lstrip('.')
+        return os.path.join(args.output_dir, out_name)
+
+    def ar(hdict):
+        return {n:a.hist for n, a in hdict.items()}
+
+    _print_rgb(ar(bottom), ar(charm), ar(others), ax_dict, opath, leg=leg)
+
+
+def _print_vertex_plots(args):
+    """print all vertex plots, color-code by algorithm"""
+    with h5py.File(args.input_file, 'r') as h5file:
+        fp = h5file['vx']
+        flavors = list(fp.keys())
+        others = (fp[flav] for flav in flavors[1:])
+        merged_flavors = _get_merged(fp[flavors[0]], others)
+
+    merged_vertex = {}
+    for algo, vx_group in merged_flavors.items():
+        vx_list = list(vx_group)
+        others = (vx_group[nvx] for nvx in vx_list[1:])
+        merged_vertex[algo] = _get_merged(vx_group[vx_list[0]], others)
+
+    def get_hist_dict(algo):
+        return {n:a.hist for n,a in merged_vertex[algo].items()}
+    avf = get_hist_dict('avf')
+    avr = get_hist_dict('avr')
+    kal = get_hist_dict('kalman')
+    leg = {'red':'kalman', 'green':'AVR', 'blue':'AVF'}
+    ax_dict = {n: a.axes for n, a in merged_vertex['avf'].items()}
+
+    def opath(base):
+        out_name = base + '.' + args.ext.lstrip('.')
+        return os.path.join(args.output_dir, out_name)
+
+    _print_rgb(kal, avr, avf, ax_dict, opath, leg=leg)
+
+def _print_jet_plots(args):
+    with h5py.File(args.input_file, 'r') as h5file:
+        fp = h5file['jets']
+        charm = _get_all_arrays(fp, 4)
+        bottom = _get_all_arrays(fp, 5)
+        others = [_get_all_arrays(fp, x) for x in fp if x not in '45']
+
+    # get a dict of axis properties
+    axes_dict = {n: a.axes for n, a in charm.items()}
+
+    # get dicts of the form {name: array, ...}
+    charm_dict = {n: a.hist for n, a in charm.items()}
+    bottom_dict = {n: a.hist for n, a in bottom.items()}
+    others_dict = {n: a.hist for n, a in others[0].items()}
+    for other in others[1:]:
+        for pl_name, (arr, axes) in other.items():
+            others_dict[pl_name] += arr
+
+    def opath(base):
+        out_name = base + '.' + args.ext.lstrip('.')
+        return os.path.join(args.output_dir, out_name)
+
+    _print_rgb(bottom_dict, charm_dict, bottom_dict, axes_dict, opath)
+
+def _print_rgb(red, green, blue, axes_dict, opath, leg=_def_leg):
+    """
+    each color should be a dict of {plot_name: np_array, ...}
+    each plot_name should have an entry in axes_dict too
+    """
+    all_plot_names = list(green)
+    projected = set()
+    for plname in all_plot_names:
+        rgb = red[plname], green[plname], blue[plname]
+        draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath(plname),
+                 leg=leg)
+        xax = plname.split('_')[0]
+        if xax not in projected:
+            opts = dict(leg=leg, axis=axes_dict[plname][0])
+            draw_xproj(*rgb, out_path=opath(xax), norm=True, **opts)
+            log_name = opath(xax + '_log')
+            draw_xproj(*rgb, out_path=log_name, log=True, **opts)
+            projected.add(xax)
+
+
+def nth_largest(array, n):
+    # check for float, if that's what it is, treat it as a fraction of
+    # array length
+    if n % 1 != 0:
+        n = math.ceil(len(array) * n)
+    return np.sort(array.flatten())[-n]
+
+def _get_merged(base, merge):
+    base_dict = _numpify(base)
+    for added in merge:
+        _add_arrays(base_dict, added)
+    return base_dict
+
+def _numpify(base, follow=[]):
+    """
+    Convert everything to nested dicts.
+
+    If `follow` is given, steers the walk through the file starting with
+    the subnodes of `base`.
+    """
+    if type(base) == dict:
+        return base
+    if is_h5_hist(base):
+        return Hist(base)
+    selection = follow[0] if len(follow) > 0 else ''
+    if selection:
+        return {selection: _numpify(base[selection])}
+    return {n: _numpify(v, follow[1:]) for n, v in base.items()}
+
+def _add_arrays(base, added):
+    try:
+        # first case: base has a 'hist' entry
+        base_hist = base.hist
+        try:
+            base_hist += added.hist
+        except AttributeError:
+            base_hist += np.asarray(added)
+        return
+    except AttributeError:
+        # second case: base has sub-entries
+        for sub in base:
+            if sub not in added: continue
+            _add_arrays(base[sub], added[sub])
+
+def _get_all_arrays(fp, label):
+    """ return a dict of {name: (numpy_array, [axis, ...]), ...} """
+    lab = str(label)
+    return {n:_numpify(a) for n, a in fp[lab].items()}
+
+def draw_rgb(red, green, blue, axes, out_path, leg):
+    rgb = np.dstack([red, green, blue])
+    # crop off overflow
+    rgb = rgb[1:-1, 1:-1,:]
+    rgb = np.log1p(rgb)
+    for iii in range(rgb.shape[2]):
+        maxval = nth_largest(rgb[:,:,iii], 2)
+        rgb[:,:,iii] = np.minimum(rgb[:,:,iii] / maxval, 1)
+    fig = Figure(figsize=(5.0,5.0*3/4))
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(1,1,1)
+    xlims, ylims = axes[0].lims, axes[1].lims
+    imextent = list(xlims) + list(ylims)
+    # transpose arrays so they draw properly (weird property of imshow)
+    ax.imshow(rgb.swapaxes(0,1), interpolation='nearest',
+              origin='lower', extent=imextent, aspect='auto')
+    ax.set_xlim(*xlims)
+    ax.set_ylim(*ylims)
+    _label_axes(ax, axes)
+    _add_rgb_legend(ax, leg)
+    out_dir, out_file = os.path.split(out_path)
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+    print('printing {}'.format(out_path))
+    canvas.print_figure(out_path, bbox_inches='tight')
+
+def _add_rgb_legend(ax, leg):
+    rgb_patch = [Patch(color=x) for x in 'rgb']
+    bcl_names = [leg[x] for x in ['red', 'green', 'blue']]
+    title = None
+    ax.legend(rgb_patch, bcl_names, loc='upper right', fancybox=False,
+              borderaxespad=0.2, title=title, framealpha=0.5,
+              labelspacing=0.2, handlelength=1.0)
+
+
+def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False,
+               leg=_def_leg):
+    rgb = np.dstack([red, green, blue]).sum(axis=1)
+    # crop off overflow
+    rgb = rgb[1:-1,:]
+
+    fig = Figure(figsize=(5.0,5.0*3/4))
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(1,1,1)
+    xlims = axis.lims
+    x_vals = np.linspace(*xlims, num=(rgb.shape[0] + 1))
+    y_lab = 'jets'
+    y_max = 0
+    # plot the stuff
+    for y_vals, color in zip(rgb.T, ['red','green','blue']):
+        if norm:
+            y_vals /= y_vals.sum()
+            y_lab = 'fraction of jets'
+        ax.plot(x_vals, np.r_[y_vals, y_vals[-1]],
+                color=color, drawstyle='steps-post',
+                label=leg[color])
+        y_max = max(y_max, nth_largest(y_vals, 2))
+    ax.set_xlim(*xlims)
+    xunit = fauxify(ax.get_xaxis(), axis.units, minval=0.1)
+    xname = axis.name
+    ax.set_xlabel(axis_name(axis, xunit), x=0.98, ha='right', size=_ax_size)
+    ax.set_ylabel(y_lab, y=0.98, ha='right', size=_ax_size)
+
+    if log:
+        ax.set_ylim(0.01 if norm else 1, ax.get_ylim()[1])
+        ax.set_yscale('log')
+    elif x_vals.size > 20:
+        ax.set_ylim(0, y_max*1.2)
+    ax.legend(frameon=False)
+
+    out_dir, out_file = os.path.split(out_path)
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+    print('printing {}'.format(out_path))
+    canvas.print_figure(out_path, bbox_inches='tight')
+
+def axis_name(ax, units):
+    nm, un = ax.name, units
+    return '{} [{}]'.format(nm, un) if un else nm
+
+def _label_axes(ax, axes, size=12):
+    xunit = fauxify(ax.get_xaxis(), axes[0].units)
+    yunit = fauxify(ax.get_yaxis(), axes[1].units)
+    ax.set_xlabel(axis_name(axes[0], xunit), x=0.98, ha='right', size=size)
+    ax.set_ylabel(axis_name(axes[1], yunit), y=0.98, ha='right', size=size)
+
+def _add_legend(ax):
+    rgb_patch = [Patch(color=x) for x in 'rgb']
+    bcl_names = [r'$b$', r'$c$', r'$\rm light$']
+    title = 'Jet Flavor'
+    ax.legend(rgb_patch, bcl_names, loc='lower left', fancybox=True,
+              borderaxespad=0.2, title=title,
+              labelspacing=0.2, handlelength=1.0)
+
+
+
+if __name__ == '__main__':
+    run()

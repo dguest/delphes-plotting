@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
 
   // Loop over all events
   std::cout << "looping over " << numberOfEntries << " entries" << std::endl;
-  int onem = numberOfEntries / 1000;
+  int onem = std::max<int>(numberOfEntries / 1000, 1);
   for(Int_t entry = 0; entry < numberOfEntries; ++entry)
   {
     if (entry % onem == 0) std::cout << entry << " processed\r" << std::flush;

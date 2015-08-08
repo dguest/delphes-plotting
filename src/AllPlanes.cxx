@@ -1,6 +1,6 @@
 #include "AllPlanes.hh"
 
-#include "Histogram.hh"
+#include "ndhist/Histogram.hh"
 
 #include "H5Cpp.h"
 

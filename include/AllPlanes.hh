@@ -1,8 +1,8 @@
 #ifndef ALL_PLANES_HH
 #define ALL_PLANES_HH
 
-#include "Axis.hh"
-#include "Histogram.hh"
+#include "ndhist/Axis.hh"
+#include "ndhist/Histogram.hh"
 
 #include <vector>
 #include <map>

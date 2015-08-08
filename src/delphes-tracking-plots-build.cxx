@@ -20,7 +20,7 @@
 #include "truth_tools.hh"
 
 #include "H5Cpp.h"
-#include "Histogram.hh"
+#include "ndhist/Histogram.hh"
 
 // === define constants ===
 const double GeV = 1;

@@ -51,9 +51,12 @@ namespace var {
   const Axis DRJV = {"drjv", 100, 0, 4};
   const Axes vx_vars{PT, ETA, LXY, LSIG, EFRC, MASS, NTRK, DRJV, VXN, NVTX};
   const Axes jet_vars{PT, ETA, NVTX};
+  const Axes sv_vars{PT, ETA, LSIG, NVTX, NTRK, DRJV, MASS};
   // const std::vector<Axis> all_vars{PT, ETA, LXY, EFRC, MASS, NTRK};
   const DMap jet_var_map(const Jet* jet);
   const DMap vx_var_map(const Jet& jet, const SecondaryVertex& vxn);
+  const DMap sv_var_map(const Jet& jet,
+			  const std::vector<SecondaryVertex>& vertices);
 }
 
 // === misc utility functions ===
@@ -72,15 +75,19 @@ namespace {
   }
 
   typedef std::map<int,std::map<std::string,std::map<int, AllPlanes>>> VxMap;
+  typedef std::map<int,std::map<std::string,AllPlanes> > HlVarMap;
   typedef std::map<std::string, int> IMap;
 
-  void fill_svx(VxMap& vx_map, const Jet& jet, IMap& counter) {
+  void fill_svx(VxMap& vx_map, HlVarMap& hl_map,
+		const Jet& jet, IMap& counter) {
+    // loop ovar algs
     for (const auto& algo_vx: sort_by_algo(jet.SecondaryVertices)){
       const auto& algo = algo_vx.first;
       auto vx_vec = algo_vx.second;
+      // go from least to most significant
       std::sort(vx_vec.begin(), vx_vec.end(), less_significant);
-      // go from most to least significant
-      std::reverse(vx_vec.begin(), vx_vec.end());
+
+      // loop over vertices
       const int n_vx = vx_vec.size();
       for (int iv = 0; iv < n_vx; iv++) {
 	counter["n vtx"]++;
@@ -98,6 +105,14 @@ namespace {
 	auto& hists = vert_map.at(iv);
 	hists.fill(vx_vars);
       } // end vx loop
+
+      // fill high-level stuff
+      auto sv_vars = var::sv_var_map(jet, vx_vec);
+      auto& flav_map = hl_map[jet.Flavor];
+      if (!flav_map.count(algo)) {
+	flav_map.emplace(algo, var::sv_vars);
+      }
+      flav_map.at(algo).fill(sv_vars);
     }   // end algo loop
   }
 
@@ -124,8 +139,10 @@ int main(int argc, char *argv[])
 
   using namespace std;
   std::map<int, AllPlanes> jets_by_flavor;
-  // key be flavor, algo, vx number
+  // key by flavor, algo, vx number
   VxMap vx_map;
+  // key by flavor, algo
+  HlVarMap hl_map;
   std::map<std::string, int> counter;
 
   // Loop over all events
@@ -148,7 +165,7 @@ int main(int argc, char *argv[])
 	jets_by_flavor.emplace(jet->Flavor, var::jet_vars);
       }
       jets_by_flavor.at(jet->Flavor).fill(jet_vars);
-      fill_svx(vx_map, *jet, counter);
+      fill_svx(vx_map, hl_map, *jet, counter);
     } // end loop over jets
   }   // end loop over events
   std::cout << std::endl;
@@ -167,6 +184,14 @@ int main(int argc, char *argv[])
       for (const auto& vx_itr: algo_itr.second) {
 	vx_itr.second.save_to(vx_group, std::to_string(vx_itr.first));
       }
+    }
+  }
+  auto by_flavor_algo = out_file.createGroup("algo");
+  for (const auto& flav_itr: hl_map) {
+    auto algo_group = by_flavor_algo.createGroup(
+      std::to_string(flav_itr.first));
+    for (const auto& algo_itr: flav_itr.second) {
+      algo_itr.second.save_to(algo_group, algo_itr.first);
     }
   }
 
@@ -206,4 +231,43 @@ namespace var {
       {DRJV.name, drjv}
     };
   } // end vx_var_map
+  const DMap sv_var_map(const Jet& jet,
+			const std::vector<SecondaryVertex>& vertices) {
+    std::vector<SecondaryVertex> over_sig_threshold;
+    DMap output {
+      {PT.name, jet.PT},
+      {ETA.name, jet.Eta},
+    };
+    TVector3 jvec;
+    jvec.SetPtEtaPhi(jet.PT, jet.Eta, jet.Phi);
+
+    double sum_dr_tracks = 0;
+    int sum_tracks = 0;
+    int sum_vertices = 0;
+    double sum_mass = 0;
+
+    // copied these variables from jetfitter
+    double sum_sig = 0;
+    double sum_inverr = 0;
+    for (auto& vx: vertices) {
+      if (vx.Lsig > 2.0) {
+	sum_vertices++;
+	double delta_r = jvec.DeltaR(vx);
+	sum_dr_tracks += vx.nTracks * delta_r;
+	sum_tracks += vx.nTracks;
+
+	sum_mass += vx.mass;
+
+	sum_sig += vx.Mag() / vx.decayLengthVariance;
+	sum_inverr += 1/vx.decayLengthVariance;
+      }
+    }
+    bool has_vx = sum_vertices > 0;
+    output[LSIG.name] = has_vx ? sum_sig / sqrt(sum_inverr) : 0;
+    output[NVTX.name] = has_vx ? sum_vertices               : 0;
+    output[NTRK.name] = has_vx ? sum_tracks                 : 0;
+    output[DRJV.name] = has_vx ? sum_dr_tracks / sum_tracks : 3.0;
+    output[MASS.name] = has_vx ? sum_mass                   : 0;
+    return output;
+  }
 }

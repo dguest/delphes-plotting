@@ -40,8 +40,8 @@ int CLI::read(int argc, char* argv[]) {
     return error(1);
   } else {
     for (int argn = 1; argn < argc; argn++) {
-      if (std::strcmp(argv[argn],"--help") ||
-	  std::strcmp(argv[argn],"-h")) {
+      if (std::strcmp(argv[argn],"--help") == 0 ||
+	  std::strcmp(argv[argn],"-h") == 0) {
 	usage(argv[0]);
 	return error(1);
       }

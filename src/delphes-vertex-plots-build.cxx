@@ -58,6 +58,7 @@ namespace var {
   const DMap sv_var_map(const Jet& jet,
 			  const std::vector<SecondaryVertex>& vertices);
 }
+std::ostream& operator<<(std::ostream& os, const var::DMap&);
 
 // === misc utility functions ===
 namespace {
@@ -108,6 +109,9 @@ namespace {
 
       // fill high-level stuff
       auto sv_vars = var::sv_var_map(jet, vx_vec);
+      // std::cout.width(40);
+      // std::cout << algo << " flav: " << jet.Flavor << " " << sv_vars
+      // 		<< std::endl;
       auto& flav_map = hl_map[jet.Flavor];
       if (!flav_map.count(algo)) {
 	flav_map.emplace(algo, var::sv_vars);
@@ -249,25 +253,34 @@ namespace var {
     // copied these variables from jetfitter
     double sum_sig = 0;
     double sum_inverr = 0;
-    for (auto& vx: vertices) {
-      if (vx.Lsig > 2.0) {
-	sum_vertices++;
-	double delta_r = jvec.DeltaR(vx);
-	sum_dr_tracks += vx.nTracks * delta_r;
-	sum_tracks += vx.nTracks;
+    const size_t n_vtx = vertices.size();
+    for (size_t vxn = 1; vxn < n_vtx; vxn++) {
+      const auto& vx = vertices.at(vxn);
+      sum_vertices++;
+      double delta_r = jvec.DeltaR(vx);
+      sum_dr_tracks += vx.nTracks * delta_r;
+      sum_tracks += vx.nTracks;
 
-	sum_mass += vx.mass;
+      sum_mass += vx.mass;
 
-	sum_sig += vx.Mag() / vx.decayLengthVariance;
-	sum_inverr += 1/vx.decayLengthVariance;
-      }
+      sum_sig += vx.Mag() / vx.decayLengthVariance;
+      sum_inverr += 1/vx.decayLengthVariance;
     }
-    bool has_vx = sum_vertices > 0;
-    output[LSIG.name] = has_vx ? sum_sig / sqrt(sum_inverr) : 0;
+    bool has_vx = (sum_vertices) > 0 && (sum_tracks > 0);
+    output[LSIG.name] = has_vx ? std::log1p(sum_sig / sqrt(sum_inverr)) : 0;
     output[NVTX.name] = has_vx ? sum_vertices               : 0;
     output[NTRK.name] = has_vx ? sum_tracks                 : 0;
     output[DRJV.name] = has_vx ? sum_dr_tracks / sum_tracks : 3.0;
     output[MASS.name] = has_vx ? sum_mass                   : 0;
     return output;
   }
+
+}
+
+std::ostream& operator<<(std::ostream& os, const var::DMap& map) {
+  using namespace std;
+  for (const auto& item: map) {
+    os << item.first << ": " << item.second << ", ";
+  }
+  return os;
 }

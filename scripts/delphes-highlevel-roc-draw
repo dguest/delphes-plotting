@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+import os, sys
+import numpy as np
+from h5py import File
+import argparse
+import numpy.ma as ma
+# import math
+
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+
+def _get_args():
+    d = 'default: %(default)s'
+    c = 'const: %(const)s'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file')
+    parser.add_argument('output_dir', nargs='?', default='test')
+    parser.add_argument('-e', '--ext', default='pdf', help=d)
+    args = parser.parse_args()
+    return args
+
+_rev_plots = {'drjet', 'jetProb'}
+_colors = {}
+
+def run():
+    args = _get_args()
+    plots = {}
+    with File(args.input_file, 'r') as h5:
+        for ds_name in h5['light']:
+            light = h5['light'][ds_name]
+            bottom = h5['bottom'][ds_name]
+            rev = (ds_name in _rev_plots)
+            eff, rej = _get_roc_xy(bottom, light, rev)
+            color = _colors.get(ds_name)
+            plots[ds_name] = (color, eff, rej)
+
+    draw_btag_roc(plots, out_name='test.pdf')
+
+def _get_roc_xy(eff_ds, rej_ds, rev=False, mineff=0.3):
+    sl = slice(None,None,-1) if not rev else slice(None)
+    eff_array = np.asarray(eff_ds)[sl].cumsum()
+    eff_array /= eff_array.max()
+    rej_array = np.asarray(rej_ds)[sl].cumsum()
+    zero_mask = np.zeros(rej_array.shape, dtype='b')
+    zero_mask = (rej_array == 0)
+    zero_mask |= (eff_array < mineff)
+    # zero_mask |= (eff_array == 1)
+    rej_array = ma.array(rej_array, mask=zero_mask)
+    # print(rej_array)
+    rej_array = rej_array.max() / rej_array
+    eff_array = ma.array(eff_array, mask=zero_mask)
+    return eff_array, rej_array
+
+def _setup_ax(ax, textsize=16):
+    ax.set_yscale('log')
+    ax.grid(which='both')
+    ax.tick_params(labelsize=textsize, which='both')
+
+def draw_btag_roc(legdic, out_name):
+    textsize = 16
+    fig = Figure(figsize=(8,6))
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(1,1,1)
+    _setup_ax(ax)
+
+    for leg, (color, eff, rej) in legdic.items():
+        opts = dict()
+        if color:
+            opts['color'] = color
+        ax.plot(eff, rej, '-', label=leg, lw=4, **opts)
+
+    out_dir = os.path.dirname(out_name)
+    if out_dir and not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+    ax.legend()
+    # ax.set_xlim(min_eff, 1.0)
+    ax.set_xlabel('b eff', x=0.98, ha='right', size=textsize)
+    ax.set_ylabel('light rej', y=0.98, ha='right', size=textsize)
+    canvas.print_figure(out_name, bbox_inches='tight')
+
+if __name__ == '__main__':
+    run()

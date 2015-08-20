@@ -106,7 +106,7 @@ void FlavorHists::fill(const Jet& jet) {
   unsigned ftl = jet.Flavor;
   if (ftl == 5) fill_hists(bottom, jet);
   else if (ftl == 4) fill_hists(charm, jet);
-  else fill_hists(light, jet);
+  else if (ftl == 1 || ftl == 2 || ftl == 21) fill_hists(light, jet);
 }
 void FlavorHists::save(H5::CommonFG& out) {
   bottom.save(out, "bottom");
@@ -152,6 +152,8 @@ int main(int argc, char *argv[])
     // loop over jets
     for (int i_jet = 0; i_jet < n_jets; i_jet++) {
       Jet* jet = root::as<Jet>(bJets->At(i_jet));
+      if (std::abs(jet->Eta) > 2.5) continue;
+      if (std::abs(jet->PT) < 20) continue;
 
       fill_hists(hists, *jet);
       flavhists.fill(*jet);

@@ -41,14 +41,14 @@ def _get_roc_xy(eff_ds, rej_ds, rev=False, mineff=0.3):
     eff_array = np.asarray(eff_ds)[sl].cumsum()
     eff_array /= eff_array.max()
     rej_array = np.asarray(rej_ds)[sl].cumsum()
-    zero_mask = np.zeros(rej_array.shape, dtype='b')
-    zero_mask = (rej_array == 0)
-    zero_mask |= (eff_array < mineff)
-    # zero_mask |= (eff_array == 1)
-    rej_array = ma.array(rej_array, mask=zero_mask)
-    # print(rej_array)
-    rej_array = rej_array.max() / rej_array
-    eff_array = ma.array(eff_array, mask=zero_mask)
+    rej_array /= rej_array.max()
+    valid = (eff_array > mineff)
+    valid &= (rej_array != 0)
+    valid &= (eff_array != 1)
+    eff_array = eff_array[valid]
+    rej_array = rej_array[valid]
+    rej_array = rej_array**(-1)
+    # print(len(rej_array), len(valid))
     return eff_array, rej_array
 
 def _setup_ax(ax, textsize=16):
@@ -73,7 +73,7 @@ def draw_btag_roc(legdic, out_name):
     if out_dir and not os.path.isdir(out_dir):
         os.mkdir(out_dir)
     ax.legend()
-    # ax.set_xlim(min_eff, 1.0)
+    ax.set_ylim(1, 1e4)
     ax.set_xlabel('b eff', x=0.98, ha='right', size=textsize)
     ax.set_ylabel('light rej', y=0.98, ha='right', size=textsize)
     canvas.print_figure(out_name, bbox_inches='tight')

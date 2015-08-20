@@ -54,16 +54,16 @@ struct Hists
 
 // const float D0_RANGE = 1.0;
 // const float Z0_RANGE = 2.0;
-const size_t BINS = 1000;
+const size_t BINS = 10000;
 const unsigned flags = 0;
 
 Hists::Hists():
-  jetProb(BINS, -20, 0, "log", flags),
-  track2d0(BINS, -10, 10, "", flags),
-  track3d0(BINS, -10, 10, "", flags),
+  jetProb(BINS, -50, 0, "log", flags),
+  track2d0(BINS, -2, 20, "", flags),
+  track3d0(BINS, -2, 20, "", flags),
   lsig(BINS, 0, 7, "log1p", flags),
-  drjet(BINS, 0, 4, "", flags),
-  mass(BINS, 0, 50, "GeV", flags)
+  drjet(BINS, 0, 10, "", flags),
+  mass(BINS, 0, 10, "GeV", flags)
 {
 }
 
@@ -92,6 +92,28 @@ namespace {
     hists.mass.fill(jet.svMass);
   }
 }
+
+struct FlavorHists
+{
+  Hists bottom;
+  Hists charm;
+  Hists light;
+  void fill(const Jet& jet);
+  void save(H5::CommonFG& out);
+};
+
+void FlavorHists::fill(const Jet& jet) {
+  unsigned ftl = jet.Flavor;
+  if (ftl == 5) fill_hists(bottom, jet);
+  else if (ftl == 4) fill_hists(charm, jet);
+  else fill_hists(light, jet);
+}
+void FlavorHists::save(H5::CommonFG& out) {
+  bottom.save(out, "bottom");
+  charm.save(out, "charm");
+  light.save(out, "light");
+}
+
 // ____________________________________________________
 // main function
 
@@ -113,6 +135,7 @@ int main(int argc, char *argv[])
   TClonesArray* bJets = treeReader->UseBranch("Jet");
 
   Hists hists;
+  FlavorHists flavhists;
   using namespace std;
 
   // Loop over all events
@@ -131,12 +154,14 @@ int main(int argc, char *argv[])
       Jet* jet = root::as<Jet>(bJets->At(i_jet));
 
       fill_hists(hists, *jet);
+      flavhists.fill(*jet);
     } // end loop over jets
   }   // end loop over events
   std::cout << std::endl;
 
   H5::H5File out_file(cli.out_name, H5F_ACC_EXCL);
-  hists.save(out_file, "high-level");
+  hists.save(out_file, "all");
+  flavhists.save(out_file);
   return 0;
 
 }

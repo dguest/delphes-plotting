@@ -50,12 +50,14 @@ struct Hists
   Histogram lsig;
   Histogram drjet;
   Histogram mass;
+  Histogram nvtx;
 };
 
 // const float D0_RANGE = 1.0;
 // const float Z0_RANGE = 2.0;
 const size_t BINS = 10000;
 const unsigned flags = 0;
+const unsigned MAX_VERTEX = 10;
 
 Hists::Hists():
   jetProb(BINS, -50, 0, "log", flags),
@@ -63,7 +65,8 @@ Hists::Hists():
   track3d0(BINS, -2, 20, "", flags),
   lsig(BINS, 0, 7, "log1p", flags),
   drjet(BINS, 0, 10, "", flags),
-  mass(BINS, 0, 10, "GeV", flags)
+  mass(BINS, 0, 10, "GeV", flags),
+  nvtx(MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, "", flags)
 {
 }
 
@@ -75,6 +78,7 @@ void Hists::save(H5::CommonFG& out_h5) {
   WRITE(lsig);
   WRITE(drjet);
   WRITE(mass);
+  WRITE(nvtx);
 #undef WRITE
 }
 void Hists::save(H5::CommonFG& out_file, const std::string& name) {
@@ -90,6 +94,7 @@ namespace {
     hists.lsig.fill(jet.svLsig > 0 ? std::log1p(jet.svLsig): -1);
     hists.drjet.fill(jet.svDrJet);
     hists.mass.fill(jet.svMass);
+    hists.nvtx.fill(jet.svNVertex);
   }
 }
 

@@ -15,7 +15,7 @@ def _get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file')
     parser.add_argument('output_dir', nargs='?', default='test')
-    parser.add_argument('-e', '--ext', default='pdf', help=d)
+    parser.add_argument('-e', '--ext', default='.pdf', help=d)
     args = parser.parse_args()
     return args
 
@@ -34,7 +34,7 @@ def run():
             color = _colors.get(ds_name)
             plots[ds_name] = (color, eff, rej)
 
-    draw_btag_roc(plots, out_name='test.pdf')
+    draw_btag_roc(plots, out_name='test.{}'.format(args.ext.lstrip('.')))
 
 def _get_roc_xy(eff_ds, rej_ds, rev=False, mineff=0.3):
     sl = slice(None,None,-1) if not rev else slice(None)
@@ -53,7 +53,7 @@ def _get_roc_xy(eff_ds, rej_ds, rev=False, mineff=0.3):
 
 def _setup_ax(ax, textsize=16):
     ax.set_yscale('log')
-    ax.grid(which='both')
+    ax.grid(which='both', linestyle='-', alpha=0.1)
     ax.tick_params(labelsize=textsize, which='both')
 
 def draw_btag_roc(legdic, out_name):
@@ -64,15 +64,15 @@ def draw_btag_roc(legdic, out_name):
     _setup_ax(ax)
 
     for leg, (color, eff, rej) in legdic.items():
-        opts = dict()
+        opts = dict(lw=4)
         if color:
             opts['color'] = color
-        ax.plot(eff, rej, '-', label=leg, lw=4, **opts)
+        ax.plot(eff, rej, '-', label=leg, **opts)
 
     out_dir = os.path.dirname(out_name)
     if out_dir and not os.path.isdir(out_dir):
         os.mkdir(out_dir)
-    ax.legend()
+    ax.legend(framealpha=0)
     ax.set_ylim(1, 1e4)
     ax.set_xlabel('b eff', x=0.98, ha='right', size=textsize)
     ax.set_ylabel('light rej', y=0.98, ha='right', size=textsize)

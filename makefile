@@ -78,9 +78,11 @@ LIBS         += $(ROOTLIBS)
 GEN_OBJ     := ExRootTreeReader.o misc_func.o truth_tools.o AllPlanes.o
 TOP_OBJ     += delphes-tracking-plots-build.o
 TOP_OBJ     += delphes-vertex-plots-build.o
+TOP_OBJ     += delphes-highlevel-plots-build.o
 
 # stuff used for the c++ executable
 ALL_EXE    := delphes-tracking-plots-build delphes-vertex-plots-build
+ALL_EXE    += delphes-highlevel-plots-build
 
 GEN_OBJ_PATHS := $(GEN_OBJ:%=$(BUILD)/%)
 TOP_OBJ_PATHS := $(TOP_OBJ:%=$(BUILD)/%)

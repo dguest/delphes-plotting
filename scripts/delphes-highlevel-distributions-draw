@@ -42,7 +42,7 @@ def _setup_ax(ax, textsize=16):
     ax.grid(which='both', linestyle='-', alpha=0.1)
     ax.tick_params(labelsize=textsize, which='both')
 
-def draw_btag_dist(flavors, out_name, xax_name):
+def draw_btag_dist(flavors, out_name, xax_name, log=False):
     textsize = 16
     fig = Figure(figsize=(8,6))
     canvas = FigureCanvas(fig)
@@ -65,8 +65,9 @@ def draw_btag_dist(flavors, out_name, xax_name):
     if out_dir and not os.path.isdir(out_dir):
         os.mkdir(out_dir)
     ax.legend(framealpha=0)
-    ax.set_ylim(1, ax.get_ylim()[1]*2)
-    ax.set_yscale('log')
+    if log:
+        ax.set_ylim(1, ax.get_ylim()[1]*2)
+        ax.set_yscale('log')
     ax.set_xlim(*xax.lims)
     ax.set_ylabel('n jets', y=0.98, ha='right', size=textsize)
     x_name = '{} [{}]'.format(xax_name, xax.units)

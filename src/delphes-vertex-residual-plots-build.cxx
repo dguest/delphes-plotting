@@ -33,14 +33,14 @@ struct Hists
 const size_t BINS = 200;
 const unsigned flags = 0;
 
-const Axis LONG   = {"z", BINS, -2, 2, "mm"};
-const Axis TRANSX = {"x", BINS, -1, 1, "mm"};
-const Axis TRANSY = {"y", BINS, -1, 1, "mm"};
-const Axis TRANSR = {"r", BINS, -1, 1, "mm"};
+const Axis LONG   = {"z", BINS, -100, 100, "mm"};
+const Axis TRANSX = {"x", BINS, -2, 2, "mm"};
+const Axis TRANSY = {"y", BINS, -5, 10, "mm"};
+const Axis TRANSR = {"r", BINS, 0, 20, "mm"};
 
 Hists::Hists():
   transverse({TRANSX, TRANSY}),
-  longitudinal({TRANSR, LONG})
+  longitudinal({LONG, TRANSY})
 {
 }
 
@@ -70,6 +70,14 @@ struct Point {
     return {{"x", x}, {"y", y}, {"z", z}, {"r", std::hypot(x, y)}};
   }
 };
+template <class T>
+Point as_point(const T& pt){
+  return {pt.x, pt.y, pt.z};
+}
+template <>
+Point as_point<TVector3>(const TVector3& pt){
+  return {pt.X(), pt.Y(), pt.Z()};
+}
 
 Point alignWithJet(const Point& pt, const Jet& jet) {
   using namespace std;
@@ -93,27 +101,38 @@ struct FlavorHists
   Hists bottom;
   Hists charm;
   Hists light;
-  void fill(const Jet& jet);
   void save(H5::CommonFG& out);
+  void save(H5::CommonFG& out, std::string name);
 };
 
 namespace {
   void fill_one_reco_residuals(FlavorHists& hists, const Jet& jet);
-}
-void FlavorHists::fill(const Jet& jet) {
-  fill_one_reco_residuals(*this, jet);
 }
 void FlavorHists::save(H5::CommonFG& out) {
   bottom.save(out, "bottom");
   charm.save(out, "charm");
   light.save(out, "light");
 }
+void FlavorHists::save(H5::CommonFG& out, std::string name) {
+  H5::Group out_group = out.createGroup(name);
+  save(out_group);
+}
 
 namespace {
   void fill_one_reco_residuals(FlavorHists& hists, const Jet& jet) {
-    if (jet.SecondaryVertices.size() != 1) return;
+    size_t nsv = jet.SecondaryVertices.size();
+    if (nsv < 1) return;
 
-    auto& sec = jet.SecondaryVertices.at(0);
+    int max_trks_idx = 0;
+    int max_tracks = 0;
+    for (int vxn = 0; vxn < nsv; vxn++) {
+      const auto& vx = jet.SecondaryVertices.at(vxn);
+      if (vx.nTracks > max_tracks){
+	max_tracks = vx.nTracks;
+	max_trks_idx = vxn;
+      }
+    }
+    const auto& sec = jet.SecondaryVertices.at(max_trks_idx);
     auto reco = alignWithJet({sec.X(), sec.Y(), sec.Z()}, jet);
     size_t n_vx = jet.TruthVertices.size();
     if (n_vx == 0) {
@@ -123,8 +142,36 @@ namespace {
       auto& vx = jet.TruthVertices.at(0);
       auto tr = alignWithJet({vx.x, vx.y, vx.z}, jet);
       Point resid = reco - tr;
-      if (n_vx == 1) hists.charm.fill(resid.map());
-      else if (n_vx == 2) hists.bottom.fill(resid.map());
+      auto map = resid.map();
+      // for (auto& it: map) {
+      // 	std::cout << it.first << " " << it.second << std::endl;
+      // }
+      if (n_vx == 1) hists.charm.fill(map);
+      else if (n_vx == 2) hists.bottom.fill(map);
+    }
+  }
+  void fill_truth(FlavorHists& hists, const Jet& jet) {
+    size_t n_vx = jet.TruthVertices.size();
+    if (n_vx == 0) return;
+    auto& vx = jet.TruthVertices.at(0);
+    auto truth = alignWithJet(as_point(vx), jet);
+    if (n_vx == 1) {
+      hists.charm.fill(truth.map());
+    } else if (n_vx == 2) {
+      hists.bottom.fill(truth.map());
+    }
+  }
+  void fill_reco(FlavorHists& hists, const Jet& jet) {
+    int flav = jet.Flavor;
+    for (const auto& vx: jet.SecondaryVertices) {
+      Point reco = alignWithJet(as_point<TVector3>(vx), jet);
+      if (flav == 5) {
+	hists.bottom.fill(reco.map());
+      } else if (flav == 4) {
+	hists.charm.fill(reco.map());
+      } else {
+	hists.light.fill(reco.map());
+      }
     }
   }
 }
@@ -151,7 +198,9 @@ int main(int argc, char *argv[])
   TClonesArray* bJets = treeReader->UseBranch("Jet");
 
   // Hists hists;
-  FlavorHists flavhists;
+  FlavorHists residuals;
+  FlavorHists truth;
+  FlavorHists reco;
   using namespace std;
 
   // Loop over all events
@@ -172,13 +221,18 @@ int main(int argc, char *argv[])
       if (std::abs(jet->PT) < 20) continue;
 
       // fill_hists(hists, *jet);
-      flavhists.fill(*jet);
+      fill_one_reco_residuals(residuals,*jet);
+      fill_truth(truth, *jet);
+      fill_reco(reco, *jet);
     } // end loop over jets
   }   // end loop over events
   std::cout << std::endl;
 
   H5::H5File out_file(cli.out_name, H5F_ACC_EXCL);
-  flavhists.save(out_file);
+  residuals.save(out_file, "residuals");
+  truth.save(out_file, "truth");
+  reco.save(out_file, "reco");
+
   return 0;
 
 }

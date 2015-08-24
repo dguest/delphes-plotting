@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""
+Plotting script for vertex reconstruction
+"""
+import os, sys
+import numpy as np
+from h5py import File
+import argparse
+
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+from matplotlib.colors import LogNorm
+from delphes.plotutils import Hist, is_h5_hist
+
+_def_leg = dict(red='bottom', green='charm', blue='light')
+_ax_size = 12
+_text_size = 12
+
+def _get_args():
+    d = 'default: %(default)s'
+    c = 'const: %(const)s'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file')
+    parser.add_argument('output_dir', nargs='?', default='test', help=d)
+    parser.add_argument('-e', '--ext', default='.pdf', help=d)
+    args = parser.parse_args()
+    return args
+
+def run():
+    args = _get_args()
+    flavs = ['bottom', 'charm', 'light']
+    with File(args.input_file, 'r') as h5:
+        bottom = Hist(h5['truth']['bottom']['transverse'])
+        charm = Hist(h5['truth']['charm']['transverse'])
+        recos = {x: Hist(h5['reco'][x]['transverse']) for x in flavs}
+        reclong = {x: Hist(h5['reco'][x]['longitudinal']) for x in flavs}
+        resid = {x: Hist(h5['residuals'][x]['transverse']) for x in flavs}
+
+    def out_name(base, subdir=''):
+        fi = '{}.{}'.format(base, args.ext.lstrip('.'))
+        opath = [args.output_dir]
+        if subdir:
+            opath.append(subdir)
+        opath.append(fi)
+        return os.path.join(*opath)
+
+    draw2d(bottom, out_name('bottom', 'truth'))
+    draw2d(bottom, out_name('charm', 'truth'))
+    for flav, hist in recos.items():
+        draw2d(hist, out_name(flav, 'recotr'))
+    for flav, hist in reclong.items():
+        draw2d(hist, out_name(flav, 'recolong'))
+    for flav, hist in resid.items():
+        draw2d(hist, out_name(flav, 'residuals'))
+
+def axis_name(ax):
+    nm, un = ax.name, ax.units
+    return '{} [{}]'.format(nm, un) if un else nm
+
+def draw2d(hist, out_path):
+    fig = Figure(figsize=(5.0,5.0*3/4))
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(1,1,1)
+
+    axes = hist.axes
+    xlims, ylims = axes[0].lims, axes[1].lims
+    imextent = list(xlims) + list(ylims)
+    im = ax.imshow(hist.hist.T, interpolation='nearest', origin='lower',
+                   extent=imextent, aspect='auto', norm=LogNorm())
+    cb = fig.colorbar(im)
+    ax.set_xlim(*xlims)
+    ax.set_ylim(*ylims)
+    ax.set_xlabel(axis_name(axes[0]), x=0.98, ha='right', size=_ax_size)
+    ax.set_ylabel(axis_name(axes[1]), y=0.98, ha='right', size=_ax_size)
+
+    out_dir, out_file = os.path.split(out_path)
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+    print('printing {}'.format(out_path))
+    canvas.print_figure(out_path, bbox_inches='tight')
+
+if __name__ == '__main__':
+    run()
+

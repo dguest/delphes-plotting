@@ -14,7 +14,7 @@ def _get_args():
     c = 'const: %(const)s'
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file')
-    parser.add_argument('output_dir', nargs='?', default='test')
+    parser.add_argument('output_dir', nargs='?', default='highlevel')
     parser.add_argument('-e', '--ext', default='.pdf', help=d)
     args = parser.parse_args()
     return args
@@ -34,7 +34,13 @@ def run():
             color = _colors.get(ds_name)
             plots[ds_name] = (color, eff, rej)
 
-    draw_btag_roc(plots, out_name='test.{}'.format(args.ext.lstrip('.')))
+    out_dir = args.output_dir
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+
+    out_base='roc.{}'.format(args.ext.lstrip('.'))
+    outname = os.path.join(out_dir, out_base)
+    draw_btag_roc(plots, outname)
 
 def _get_roc_xy(eff_ds, rej_ds, rev=False, mineff=0.3):
     sl = slice(None,None,-1) if not rev else slice(None)

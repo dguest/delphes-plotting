@@ -1,6 +1,7 @@
 #include <iostream>
 #include <utility>
 #include <vector>
+#include <set>
 #include <string>
 #include <cmath>
 #include <cassert>
@@ -62,6 +63,22 @@ std::ostream& operator<<(std::ostream& os, const var::DMap&);
 
 // === misc utility functions ===
 namespace {
+
+  int fix_nan(var::DMap& map, const std::set<std::string>& silent) {
+    int fixed = 0;
+    for (auto& var: map) {
+      if (isnan(var.second)) {
+	if (silent.count(var.first)) {
+	  fixed++;
+	  var.second = -1;
+	} else {
+	  throw std::range_error(var.first + " is NaN");
+	}
+      }
+    }
+    return fixed;
+  }
+
   std::map<std::string, std::vector<SecondaryVertex> > sort_by_algo(
     const std::vector<SecondaryVertex>& input) {
     std::map<std::string, std::vector<SecondaryVertex> > out;
@@ -95,10 +112,7 @@ namespace {
 	auto vx_vars = var::vx_var_map(jet, vx_vec.at(iv));
 	vx_vars[var::VXN.name] = iv;
 	vx_vars[var::NVTX.name] = n_vx;
-	if (isnan(vx_vars[var::LSIG.name])) {
-	  counter["nan vx sig"]++;
-	  vx_vars[var::LSIG.name] = -1;
-	}
+	if (fix_nan(vx_vars, {var::LSIG.name})) counter["nan vx sig"]++;
 	auto& vert_map = vx_map[jet.Flavor][algo];
 	if (!vert_map.count(iv) ) {
 	  vert_map.emplace(iv, AllPlanes(var::vx_vars, true));
@@ -109,6 +123,7 @@ namespace {
 
       // fill high-level stuff
       auto sv_vars = var::sv_var_map(jet, vx_vec);
+      fix_nan(sv_vars, {var::LSIG.name});
       // std::cout.width(40);
       // std::cout << algo << " flav: " << jet.Flavor << " " << sv_vars
       // 		<< std::endl;

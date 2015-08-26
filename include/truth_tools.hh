@@ -15,6 +15,7 @@ namespace truth {
 
   GenParticle* get_gen_particle(const Track* track);
   std::string map_particle(int pid);
+  int major_quark(int pid);
 }
 
 #endif

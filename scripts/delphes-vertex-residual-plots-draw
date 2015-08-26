@@ -35,6 +35,7 @@ def run():
         recos = {x: Hist(h5['reco'][x]['transverse']) for x in flavs}
         reclong = {x: Hist(h5['reco'][x]['longitudinal']) for x in flavs}
         resid = {x: Hist(h5['residuals'][x]['transverse']) for x in flavs}
+        response = {x: Hist(h5['response'][x]['yproj']) for x in flavs}
 
     def out_name(base, subdir=''):
         fi = '{}.{}'.format(base, args.ext.lstrip('.'))
@@ -52,12 +53,15 @@ def run():
         draw2d(hist, out_name(flav, 'recolong'))
     for flav, hist in resid.items():
         draw2d(hist, out_name(flav, 'residuals'))
+    for flav, hist in response.items():
+        draw2d(hist, out_name(flav, 'response'))
 
 def axis_name(ax):
     nm, un = ax.name, ax.units
     return '{} [{}]'.format(nm, un) if un else nm
 
 def draw2d(hist, out_path):
+    print('printing {}...'.format(out_path), end='')
     fig = Figure(figsize=(5.0,5.0*3/4))
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(1,1,1)
@@ -65,9 +69,11 @@ def draw2d(hist, out_path):
     axes = hist.axes
     xlims, ylims = axes[0].lims, axes[1].lims
     imextent = list(xlims) + list(ylims)
-    im = ax.imshow(hist.hist.T, interpolation='nearest', origin='lower',
+    if hist.hist.sum() > 0:
+        im = ax.imshow(hist.hist.T, interpolation='nearest', origin='lower',
                    extent=imextent, aspect='auto', norm=LogNorm())
-    cb = fig.colorbar(im)
+        cb = fig.colorbar(im)
+
     ax.set_xlim(*xlims)
     ax.set_ylim(*ylims)
     ax.set_xlabel(axis_name(axes[0]), x=0.98, ha='right', size=_ax_size)
@@ -76,7 +82,7 @@ def draw2d(hist, out_path):
     out_dir, out_file = os.path.split(out_path)
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
-    print('printing {}'.format(out_path))
+    print('done')
     canvas.print_figure(out_path, bbox_inches='tight')
 
 if __name__ == '__main__':

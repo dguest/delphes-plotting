@@ -1,4 +1,5 @@
 #include "root.hh"
+#include "truth_tools.hh"
 
 #include "TFile.h"
 #include "TClonesArray.h"
@@ -59,6 +60,7 @@ void Hists::fill(const std::map<std::string, double>& vals) {
   longitudinal.fill(vals);
 }
 
+
 struct Point {
   double x;
   double y;
@@ -96,30 +98,49 @@ Point alignWithJet(const Point& pt, const Jet& jet) {
   return out;
 }
 
+struct ResponseHist
+{
+  ResponseHist();
+  Histogram yproj;
+  void fill(const Point& trth, const Point& reco);
+  void save(H5::CommonFG& out, const std::string& subgrp);
+};
+ResponseHist::ResponseHist():
+  yproj({{"true", BINS, -5, 15, "mm"}, {"reco", BINS, -5, 15, "mm"}})
+{}
+void ResponseHist::save(H5::CommonFG& out, const std::string& subgrp) {
+  H5::Group grp(out.createGroup(subgrp));
+  yproj.write_to(grp, "yproj");
+}
+void ResponseHist::fill(const Point& trth, const Point& reco) {
+  yproj.fill({trth.y, reco.y});
+}
+
+
+template <class T>
 struct FlavorHists
 {
-  Hists bottom;
-  Hists charm;
-  Hists light;
+  T bottom;
+  T charm;
+  T light;
   void save(H5::CommonFG& out);
   void save(H5::CommonFG& out, std::string name);
 };
 
-namespace {
-  void fill_one_reco_residuals(FlavorHists& hists, const Jet& jet);
-}
-void FlavorHists::save(H5::CommonFG& out) {
+template <class T>
+void FlavorHists<T>::save(H5::CommonFG& out) {
   bottom.save(out, "bottom");
   charm.save(out, "charm");
   light.save(out, "light");
 }
-void FlavorHists::save(H5::CommonFG& out, std::string name) {
+template <class T>
+void FlavorHists<T>::save(H5::CommonFG& out, std::string name) {
   H5::Group out_group = out.createGroup(name);
   save(out_group);
 }
 
 namespace {
-  void fill_one_reco_residuals(FlavorHists& hists, const Jet& jet) {
+  void fill_one_reco_residuals(FlavorHists<Hists>& hists, const Jet& jet) {
     size_t nsv = jet.SecondaryVertices.size();
     if (nsv < 1) return;
 
@@ -138,7 +159,7 @@ namespace {
     if (n_vx == 0) {
       hists.light.fill(reco.map());
     } else if (n_vx == 1 || n_vx == 2) {
-      // TODO: is this the most significant, or second-most?
+      // vertices are ordered like the decay chain, first is first to decay
       auto& vx = jet.TruthVertices.at(0);
       auto tr = alignWithJet({vx.x, vx.y, vx.z}, jet);
       Point resid = reco - tr;
@@ -150,7 +171,7 @@ namespace {
       else if (n_vx == 2) hists.bottom.fill(map);
     }
   }
-  void fill_truth(FlavorHists& hists, const Jet& jet) {
+  void fill_truth(FlavorHists<Hists>& hists, const Jet& jet) {
     size_t n_vx = jet.TruthVertices.size();
     if (n_vx == 0) return;
     auto& vx = jet.TruthVertices.at(0);
@@ -161,7 +182,7 @@ namespace {
       hists.bottom.fill(truth.map());
     }
   }
-  void fill_reco(FlavorHists& hists, const Jet& jet) {
+  void fill_reco(FlavorHists<Hists>& hists, const Jet& jet) {
     int flav = jet.Flavor;
     for (const auto& vx: jet.SecondaryVertices) {
       Point reco = alignWithJet(as_point<TVector3>(vx), jet);
@@ -171,6 +192,21 @@ namespace {
 	hists.charm.fill(reco.map());
       } else {
 	hists.light.fill(reco.map());
+      }
+    }
+  }
+  void fill_response(FlavorHists<ResponseHist>& hists, const Jet& jet) {
+    if (jet.SecondaryVertices.size() == 0) return;
+    for (const auto& vx: jet.TruthVertices) {
+      int flav = truth::major_quark(vx.pdgid);
+      Point reco = as_point<TVector3>(jet.SecondaryVertices.at(0));
+      Point trth = as_point(vx);
+      if (flav == 5) {
+	hists.bottom.fill(trth, reco);
+      } else if (flav == 4) {
+	hists.charm.fill(trth, reco);
+      } else {
+	hists.light.fill(trth, reco);
       }
     }
   }
@@ -198,9 +234,10 @@ int main(int argc, char *argv[])
   TClonesArray* bJets = treeReader->UseBranch("Jet");
 
   // Hists hists;
-  FlavorHists residuals;
-  FlavorHists truth;
-  FlavorHists reco;
+  FlavorHists<Hists> residuals;
+  FlavorHists<Hists> truth;
+  FlavorHists<Hists> reco;
+  FlavorHists<ResponseHist> response;
   using namespace std;
 
   // Loop over all events
@@ -224,6 +261,7 @@ int main(int argc, char *argv[])
       fill_one_reco_residuals(residuals,*jet);
       fill_truth(truth, *jet);
       fill_reco(reco, *jet);
+      fill_response(response, *jet);
     } // end loop over jets
   }   // end loop over events
   std::cout << std::endl;
@@ -232,6 +270,7 @@ int main(int argc, char *argv[])
   residuals.save(out_file, "residuals");
   truth.save(out_file, "truth");
   reco.save(out_file, "reco");
+  response.save(out_file, "response");
 
   return 0;
 

@@ -33,7 +33,8 @@ def run():
                 plots[ds_name][flavor] = Hist(h5[flavor][ds_name])
 
     for distname, flavors in plots.items():
-        out_name = 'dists/{}.{}'.format(distname, args.ext.lstrip('.'))
+        out_name = '{}/{}.{}'.format(
+            args.output_dir, distname, args.ext.lstrip('.'))
         print('drawing {}'.format(out_name))
         draw_btag_dist(flavors, out_name=out_name, xax_name=distname)
 

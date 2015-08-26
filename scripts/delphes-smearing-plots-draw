@@ -10,3 +10,32 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.colors import LogNorm
 from delphes.plotutils import Hist, is_h5_hist
+from delphes.mplutils import Canvas, draw2d, draw1d
+
+def _get_args():
+    d = 'default: %(default)s'
+    c = 'const: %(const)s'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file')
+    parser.add_argument('output_dir', nargs='?', default='smearing', help=d)
+    parser.add_argument('-e', '--ext', default='.pdf', help=d)
+    args = parser.parse_args()
+    return args
+
+def run():
+    args = _get_args()
+    with File(args.input_file, 'r') as h5:
+        hist2d = Hist(h5['all']['delphes']['d0_phi'])
+        hist1d = Hist(h5['all']['delphes']['phi'])
+
+    out_name = os.path.join(args.output_dir, 'zork.pdf')
+    with Canvas(out_name) as can:
+        draw2d(can, hist2d)
+    out_name2 = os.path.join(args.output_dir, 'zork-1.pdf')
+    with Canvas(out_name2) as can:
+        hist1d.label = 'bork'
+        hist1d.color = 'red'
+        draw1d(can, [hist1d])
+
+if __name__ == '__main__':
+    run()

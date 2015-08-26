@@ -80,11 +80,10 @@ TOP_OBJ     += delphes-tracking-plots-build.o
 TOP_OBJ     += delphes-vertex-plots-build.o
 TOP_OBJ     += delphes-highlevel-plots-build.o
 TOP_OBJ     += delphes-vertex-residual-plots-build.o
+TOP_OBJ     += delphes-smearing-plots-build.o
 
 # stuff used for the c++ executable
-ALL_EXE    := delphes-tracking-plots-build delphes-vertex-plots-build
-ALL_EXE    += delphes-highlevel-plots-build
-ALL_EXE    += delphes-vertex-residual-plots-build
+ALL_EXE    := $(TOP_OBJ:%.o=%)
 
 GEN_OBJ_PATHS := $(GEN_OBJ:%=$(BUILD)/%)
 TOP_OBJ_PATHS := $(TOP_OBJ:%=$(BUILD)/%)

@@ -1,11 +1,4 @@
-#include <iostream>
-#include <vector>
-#include <string>
-#include <cmath>
-#include <cassert>
-
-#include <Eigen/LU>
-
+#include "track_set_macros.hh"
 #include "root.hh"
 #include "AllPlanes.hh"
 
@@ -19,6 +12,15 @@
 #include "H5Cpp.h"
 #include "ndhist/Axis.hh"
 #include "ndhist/Histogram.hh"
+
+#include <Eigen/LU>
+#include <Eigen/Dense>
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <cmath>
+#include <cassert>
 
 const double pi = std::atan2(0, -1);
 
@@ -81,6 +83,64 @@ namespace {
     };
   }
 
+  typedef Eigen::Matrix<float, 5, 1> TrackParameters;
+  typedef Eigen::Matrix<float, 5, 5> CovMatrix;
+
+  TrackParameters eigenFromTrkArray(const float* trk_array) {
+    TrackParameters pars;
+    for (int iii = 0; iii < 5; iii++) {
+      pars(iii) = trk_array[iii];
+    }
+    return pars;
+  }
+
+  CovMatrix eigenFromCovArray(const float* cov_array) {
+    CovMatrix cov;
+    // ugly copy of covariance matrix to eigen matrix
+    using namespace TrackParam;
+    TRKCOV_2FROMARRAY(D0);
+
+    TRKCOV_FROMARRAY(Z0,D0);
+    TRKCOV_2FROMARRAY(Z0);
+
+    TRKCOV_FROMARRAY(PHI,D0);
+    TRKCOV_FROMARRAY(PHI,Z0);
+    TRKCOV_2FROMARRAY(PHI);
+
+    TRKCOV_FROMARRAY(THETA,D0);
+    TRKCOV_FROMARRAY(THETA,Z0);
+    TRKCOV_FROMARRAY(THETA,PHI);
+    TRKCOV_2FROMARRAY(THETA);
+
+    TRKCOV_FROMARRAY(QOVERP,D0);
+    TRKCOV_FROMARRAY(QOVERP,Z0);
+    TRKCOV_FROMARRAY(QOVERP,PHI);
+    TRKCOV_FROMARRAY(QOVERP,THETA);
+    TRKCOV_2FROMARRAY(QOVERP);
+    return cov;
+  }
+
+  double get_mahalanobis_smearing_dist(const Track& track) {
+    CovMatrix cov = eigenFromCovArray(track.trkCov);
+    // invert the matrix
+    CovMatrix inverse = cov.inverse();
+    std::cout << cov << std::endl;
+    std::cout << inverse << std::endl;
+    // std::cout << cov * inverse << std::endl;
+
+    TrackParameters smeared = eigenFromTrkArray(track.trkPar);
+    const auto* rawtrk = root::as<Track>(track.Particle.GetObject());
+    TrackParameters raw = eigenFromTrkArray(rawtrk->trkPar);
+    TrackParameters smearing = smeared - raw;
+    std::cout << smearing << std::endl;
+    double dist2 = smearing.transpose() * inverse * smearing;
+    std::cout << dist2 << std::endl;
+    double cart2 = smearing.transpose() * smearing;
+    std::cout << std::sqrt(dist2) << " " << std::sqrt(cart2) << std::endl;
+    abort();
+    return 1;
+  }
+
 }
 
 // ____________________________________________________
@@ -121,6 +181,7 @@ int main(int argc, char *argv[])
     for (int i_trk = 0; i_trk < n_tracks; i_trk++) {
       auto* track = root::as<Track>(tracks_branch->At(i_trk));
       if (std::abs(track->Eta) > 2.5) continue;
+      get_mahalanobis_smearing_dist(*track);
       const auto smearing = get_smearing(*track);
       hists.delphes.fill(smearing);
 

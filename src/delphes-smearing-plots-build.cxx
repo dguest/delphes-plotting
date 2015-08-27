@@ -4,6 +4,8 @@
 #include <cmath>
 #include <cassert>
 
+#include <Eigen/LU>
+
 #include "root.hh"
 #include "AllPlanes.hh"
 

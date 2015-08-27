@@ -69,6 +69,9 @@ LIBS         += -lDelphes
 # --- HDF5 needed for hist saving
 LIBS         += -lhdf5_cpp -lhdf5
 
+# --- Eigen
+CXXFLAGS     += $(shell pkg-config eigen3 --cflags)
+
 # --- rootstuff
 CXXFLAGS     += $(ROOTCFLAGS)
 LDFLAGS      += $(ROOTLDFLAGS)

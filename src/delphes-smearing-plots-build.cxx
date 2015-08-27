@@ -83,8 +83,8 @@ namespace {
     };
   }
 
-  typedef Eigen::Matrix<float, 5, 1> TrackParameters;
-  typedef Eigen::Matrix<float, 5, 5> CovMatrix;
+  typedef Eigen::Matrix<double, 5, 1> TrackParameters;
+  typedef Eigen::Matrix<double, 5, 5> CovMatrix;
 
   TrackParameters eigenFromTrkArray(const float* trk_array) {
     TrackParameters pars;
@@ -122,23 +122,13 @@ namespace {
 
   double get_mahalanobis_smearing_dist(const Track& track) {
     CovMatrix cov = eigenFromCovArray(track.trkCov);
-    // invert the matrix
     CovMatrix inverse = cov.inverse();
-    std::cout << cov << std::endl;
-    std::cout << inverse << std::endl;
-    // std::cout << cov * inverse << std::endl;
-
     TrackParameters smeared = eigenFromTrkArray(track.trkPar);
     const auto* rawtrk = root::as<Track>(track.Particle.GetObject());
     TrackParameters raw = eigenFromTrkArray(rawtrk->trkPar);
     TrackParameters smearing = smeared - raw;
-    std::cout << smearing << std::endl;
     double dist2 = smearing.transpose() * inverse * smearing;
-    std::cout << dist2 << std::endl;
-    double cart2 = smearing.transpose() * smearing;
-    std::cout << std::sqrt(dist2) << " " << std::sqrt(cart2) << std::endl;
-    abort();
-    return 1;
+    return dist2;
   }
 
 }
@@ -166,6 +156,7 @@ int main(int argc, char *argv[])
   treeReader->UseBranch("OriginalTrack");
 
   Hists hists;
+  Histogram mahalanobis_distance(200, 0, 10);
 
   // Loop over all events
   std::cout << "looping over " << numberOfEntries << " entries" << std::endl;
@@ -181,9 +172,9 @@ int main(int argc, char *argv[])
     for (int i_trk = 0; i_trk < n_tracks; i_trk++) {
       auto* track = root::as<Track>(tracks_branch->At(i_trk));
       if (std::abs(track->Eta) > 2.5) continue;
-      get_mahalanobis_smearing_dist(*track);
       const auto smearing = get_smearing(*track);
       hists.delphes.fill(smearing);
+      mahalanobis_distance.fill(get_mahalanobis_smearing_dist(*track));
 
     } // end loop over jets
   }   // end loop over events
@@ -191,6 +182,7 @@ int main(int argc, char *argv[])
 
   H5::H5File out_file(cli.out_name, H5F_ACC_EXCL);
   hists.save(out_file, "all");
+  mahalanobis_distance.write_to(out_file, "mahalanobis");
   return 0;
 
 }

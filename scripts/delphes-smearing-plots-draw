@@ -12,6 +12,8 @@ from matplotlib.colors import LogNorm
 from delphes.plotutils import Hist, is_h5_hist
 from delphes.mplutils import Canvas, draw2d, draw1d
 
+from scipy.stats import chi2
+
 def _get_args():
     d = 'default: %(default)s'
     c = 'const: %(const)s'
@@ -35,6 +37,19 @@ def run():
                 hists1[name] = hist
             elif len(hist.axes) == 2:
                 hists2[name] = hist
+        mahalanobis = Hist(h5['mahalanobis'])
+
+    with Canvas(args.output_dir + '/mahalanobis.pdf') as can:
+        xax = mahalanobis.axes[0]
+        ar = mahalanobis.hist
+        bin_size = (xax.lims[1] - xax.lims[0]) / (ar.size - 2)
+        mahalanobis.norm = 1 / (mahalanobis.hist.sum() * bin_size)
+        mahalanobis.label = r"Track $\chi^2$"
+        dist = chi2(5)
+        xp = np.linspace(0, 10, num=100)
+        yp = dist.pdf(xp)
+        can.ax.plot(xp, yp, label=r'$\chi^2$ df = 5')
+        draw1d(can, [mahalanobis])
 
     def outnm(name):
         out = os.path.join(args.output_dir, '{}.pdf'.format(name))
@@ -48,6 +63,7 @@ def run():
     for name, hist in hists1.items():
         with Canvas(outnm(name)) as can:
             draw1d(can, [hist])
+
 
 if __name__ == '__main__':
     run()

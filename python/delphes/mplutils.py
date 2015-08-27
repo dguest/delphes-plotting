@@ -80,6 +80,7 @@ def draw1d(can, hists, ylabel='entries', log=False):
     include a few additional attributes:
      - color: the color to plot them as
      - label: legend label
+     - norm: multiply by this
     """
     draw_opts = dict(drawstyle='steps-post')
     xax = hists[0].axes[0]
@@ -94,8 +95,9 @@ def draw1d(can, hists, ylabel='entries', log=False):
                 opts[attribute] = getattr(hist, attribute)
         add('color')
         add('label')
-
-        can.ax.plot(*getxy(hist), **opts)
+        x, y = getxy(hist)
+        normy = getattr(hist, 'norm', 1.0) * y
+        can.ax.plot(x, normy, **opts)
     can.ax.set_xlim(*xax.lims)
     can.ax.set_xlabel(_ax_name(xax), x=0.98, ha='right', size=_ax_size)
     can.ax.set_ylabel(ylabel, y=0.98, ha='right', size=_ax_size)

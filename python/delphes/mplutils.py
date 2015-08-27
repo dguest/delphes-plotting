@@ -7,6 +7,7 @@ import os
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.colors import LogNorm
+from matplotlib.cm import get_cmap
 
 import numpy as np
 
@@ -56,15 +57,17 @@ def draw2d(can, hist, log=False, **kwargs):
     axes = hist.axes
     xlims, ylims = axes[0].lims, axes[1].lims
     imextent = list(xlims) + list(ylims)
+    cmap = get_cmap('hot')
 
-    args = dict(aspect='auto', origin='lower', extent=imextent)
+    args = dict(aspect='auto', origin='lower', extent=imextent,
+                cmap=cmap, interpolation='nearest')
     args.update(**kwargs)
     if log:
         args['norm'] = LogNorm()
 
     image = hist.hist[1:-1,1:-1].T
     if image.sum() > 0:
-        im = ax.imshow(image, interpolation='nearest', **args)
+        im = ax.imshow(image, **args)
         cb = fig.colorbar(im)
 
     ax.set_xlim(*xlims)

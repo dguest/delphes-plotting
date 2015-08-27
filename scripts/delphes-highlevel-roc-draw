@@ -30,7 +30,7 @@ def run():
             light = h5['light'][ds_name]
             bottom = h5['bottom'][ds_name]
             rev = (ds_name in _rev_plots)
-            eff, rej = _get_roc_xy(bottom, light, rev, mineff=0)
+            eff, rej = _get_roc_xy(bottom, light, rev, mineff=0.3)
             color = _colors.get(ds_name)
             plots[ds_name] = (color, eff, rej)
 
@@ -79,7 +79,7 @@ def draw_btag_roc(legdic, out_name):
     if out_dir and not os.path.isdir(out_dir):
         os.mkdir(out_dir)
     ax.legend(framealpha=0)
-    ax.set_ylim(1, 1e5)
+    ax.set_ylim(1, 1e4)
     ax.set_xlabel('b eff', x=0.98, ha='right', size=textsize)
     ax.set_ylabel('light rej', y=0.98, ha='right', size=textsize)
     canvas.print_figure(out_name, bbox_inches='tight')

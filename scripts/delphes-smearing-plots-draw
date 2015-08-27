@@ -24,18 +24,30 @@ def _get_args():
 
 def run():
     args = _get_args()
-    with File(args.input_file, 'r') as h5:
-        hist2d = Hist(h5['all']['delphes']['d0_phi'])
-        hist1d = Hist(h5['all']['delphes']['phi'])
 
-    out_name = os.path.join(args.output_dir, 'zork.pdf')
-    with Canvas(out_name) as can:
-        draw2d(can, hist2d)
-    out_name2 = os.path.join(args.output_dir, 'zork-1.pdf')
-    with Canvas(out_name2) as can:
-        hist1d.label = 'bork'
-        hist1d.color = 'red'
-        draw1d(can, [hist1d])
+    # load histograms
+    hists1 = {}
+    hists2 = {}
+    with File(args.input_file, 'r') as h5:
+        for name, dataset in h5['all']['delphes'].items():
+            hist = Hist(dataset)
+            if len(hist.axes) == 1:
+                hists1[name] = hist
+            elif len(hist.axes) == 2:
+                hists2[name] = hist
+
+    def outnm(name):
+        out = os.path.join(args.output_dir, '{}.pdf'.format(name))
+        print('drawing {}'.format(out))
+        return out
+    # draw 2d
+    for name, hist in hists2.items():
+        with Canvas(outnm(name)) as can:
+            draw2d(can, hist)
+    # draw 1d
+    for name, hist in hists1.items():
+        with Canvas(outnm(name)) as can:
+            draw1d(can, [hist])
 
 if __name__ == '__main__':
     run()

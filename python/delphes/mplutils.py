@@ -73,17 +73,28 @@ def draw2d(can, hist, log=False, **kwargs):
     ax.set_ylabel(_ax_name(axes[1]), y=0.98, ha='right', size=_ax_size)
 
 def draw1d(can, hists, ylabel='entries', log=False):
+    """
+    Draw a list of 1d histograms on canvas `can`.
+
+    The Histograms should come from `ndhist`, and can contain can
+    include a few additional attributes:
+     - color: the color to plot them as
+     - label: legend label
+    """
     draw_opts = dict(drawstyle='steps-post')
     xax = hists[0].axes[0]
     for hist in hists:
         assert len(hist.axes) == 1, "only works for 1d hists (for now)"
         assert np.all(np.isclose(xax.lims, hist.axes[0].lims))
         opts = draw_opts.copy()
+
         def add(attribute):
+            """Pull draw options from the hist objects"""
             if hasattr(hist, attribute):
                 opts[attribute] = getattr(hist, attribute)
         add('color')
         add('label')
+
         can.ax.plot(*getxy(hist), **opts)
     can.ax.set_xlim(*xax.lims)
     can.ax.set_xlabel(_ax_name(xax), x=0.98, ha='right', size=_ax_size)

@@ -13,6 +13,7 @@
 #include "ndhist/Histogram.hh"
 
 #include <iostream>
+#include <ostream>
 #include <vector>
 #include <string>
 #include <cmath>
@@ -35,7 +36,7 @@ const size_t BINS = 200;
 const unsigned flags = 0;
 
 const Axis LONG   = {"z", BINS, -100, 100, "mm"};
-const Axis TRANSX = {"x", BINS, -2, 2, "mm"};
+const Axis TRANSX = {"x", BINS, -40, 40, "mm"};
 const Axis TRANSY = {"y", BINS, -5, 10, "mm"};
 const Axis TRANSR = {"r", BINS, 0, 20, "mm"};
 
@@ -96,6 +97,12 @@ Point alignWithJet(const Point& pt, const Jet& jet) {
   }
   out.z = pt.z;
   return out;
+}
+std::ostream& operator<<(std::ostream& os, const Point& pt) {
+  os << "x: " << pt.x;
+  os << " y: " << pt.y;
+  os << " z: " << pt.z;
+  return os;
 }
 
 struct ResponseHist

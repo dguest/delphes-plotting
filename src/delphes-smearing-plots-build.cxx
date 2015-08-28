@@ -130,6 +130,16 @@ namespace {
     double dist2 = smearing.transpose() * inverse * smearing;
     return dist2;
   }
+  double get_mahalanobis_rave_smearing_dist(const Track& track) {
+    CovMatrix cov = eigenFromCovArray(track.trkCov);
+    CovMatrix inverse = cov.inverse();
+    TrackParameters smeared = eigenFromTrkArray(track.trkParRave);
+    const auto* rawtrk = root::as<Track>(track.Particle.GetObject());
+    TrackParameters raw = eigenFromTrkArray(rawtrk->trkParRave);
+    TrackParameters smearing = smeared - raw;
+    double dist2 = smearing.transpose() * inverse * smearing;
+    return dist2;
+  }
 
 }
 
@@ -157,6 +167,7 @@ int main(int argc, char *argv[])
 
   Hists hists;
   Histogram mahalanobis_distance(200, 0, 10);
+  Histogram mahalanobis_distance_rave(200, 0, 10);
 
   // Loop over all events
   std::cout << "looping over " << numberOfEntries << " entries" << std::endl;
@@ -175,14 +186,19 @@ int main(int argc, char *argv[])
       const auto smearing = get_smearing(*track);
       hists.delphes.fill(smearing);
       mahalanobis_distance.fill(get_mahalanobis_smearing_dist(*track));
-
+      if (track->trkParRave[0] != 0){
+	mahalanobis_distance_rave.fill(
+	  get_mahalanobis_rave_smearing_dist(*track));
+      }
     } // end loop over jets
   }   // end loop over events
   std::cout << std::endl;
 
   H5::H5File out_file(cli.out_name, H5F_ACC_EXCL);
   hists.save(out_file, "all");
-  mahalanobis_distance.write_to(out_file, "mahalanobis");
+  H5::Group chi2 = out_file.createGroup("mahalanobis");
+  mahalanobis_distance.write_to(chi2, "delphes");
+  mahalanobis_distance_rave.write_to(chi2, "rave");
   return 0;
 
 }

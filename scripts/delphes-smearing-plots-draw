@@ -37,19 +37,10 @@ def run():
                 hists1[name] = hist
             elif len(hist.axes) == 2:
                 hists2[name] = hist
-        mahalanobis = Hist(h5['mahalanobis'])
+        mahalanobis = {
+            x:Hist(h5['mahalanobis'][x]) for x in ['delphes','rave']}
 
-    with Canvas(args.output_dir + '/mahalanobis.pdf') as can:
-        xax = mahalanobis.axes[0]
-        ar = mahalanobis.hist
-        bin_size = (xax.lims[1] - xax.lims[0]) / (ar.size - 2)
-        mahalanobis.norm = 1 / (mahalanobis.hist.sum() * bin_size)
-        mahalanobis.label = r"Track $\chi^2$"
-        dist = chi2(5)
-        xp = np.linspace(0, 10, num=100)
-        yp = dist.pdf(xp)
-        can.ax.plot(xp, yp, label=r'$\chi^2$ df = 5')
-        draw1d(can, [mahalanobis])
+    _print_mahalanobis(mahalanobis, args)
 
     def outnm(name):
         out = os.path.join(args.output_dir, '{}.pdf'.format(name))
@@ -64,6 +55,22 @@ def run():
         with Canvas(outnm(name)) as can:
             draw1d(can, [hist])
 
+def _print_mahalanobis(mahalanobis, args):
+    hists = []
+    for name, hist in mahalanobis.items():
+        ar = hist.hist
+        xax = hist.axes[0]
+        bin_size = (xax.lims[1] - xax.lims[0]) / (ar.size - 2)
+        hist.norm = 1 / (ar.sum() * bin_size)
+        hist.label = name + r"$\chi^2$"
+        hists.append(hist)
+
+    with Canvas(args.output_dir + '/mahalanobis.pdf') as can:
+        dist = chi2(5)
+        xp = np.linspace(0, 10, num=100)
+        yp = dist.pdf(xp)
+        can.ax.plot(xp, yp, label=r'$\chi^2$ df = 5')
+        draw1d(can, hists)
 
 if __name__ == '__main__':
     run()

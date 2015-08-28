@@ -50,7 +50,9 @@ namespace var {
   const Axis NVTX = {"nvtx", MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""};
   const Axis VXN  = {"vxn" , MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""};
   const Axis DRJV = {"drjv", 100, 0, 4};
-  const Axes vx_vars{PT, ETA, LXY, LSIG, EFRC, MASS, NTRK, DRJV, VXN, NVTX};
+  const Axis DPHI = {"dphi", 100, -pi, pi};
+  const Axes vx_vars{
+    PT, ETA, LXY, LSIG, EFRC, MASS, NTRK, DRJV, VXN, NVTX, DPHI};
   const Axes jet_vars{PT, ETA, NVTX};
   const Axes sv_vars{PT, ETA, LSIG, NVTX, NTRK, DRJV, MASS};
   // const std::vector<Axis> all_vars{PT, ETA, LXY, EFRC, MASS, NTRK};
@@ -239,6 +241,7 @@ namespace var {
     TVector3 jvec;
     jvec.SetPtEtaPhi(jet.PT, jet.Eta, jet.Phi);
     double drjv = jvec.DeltaR(vx);
+    double dphi = jvec.DeltaPhi(vx);
     return {
       {PT.name, jet.PT},
       {ETA.name, jet.Eta},
@@ -247,7 +250,8 @@ namespace var {
       {EFRC.name, vx.eFrac},
       {MASS.name, vx.mass},
       {NTRK.name, vx.nTracks},
-      {DRJV.name, drjv}
+      {DRJV.name, drjv},
+      {DPHI.name, dphi},
     };
   } // end vx_var_map
   const DMap sv_var_map(const Jet& jet,

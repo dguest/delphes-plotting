@@ -35,8 +35,8 @@ struct Hists
 const size_t BINS = 200;
 const unsigned flags = 0;
 
-const Axis LONG   = {"z", BINS, -100, 100, "mm"};
-const Axis TRANSX = {"x", BINS, -40, 40, "mm"};
+const Axis LONG   = {"z", BINS, -10, 10, "mm"};
+const Axis TRANSX = {"x", BINS, -2.5, 2.5, "mm"};
 const Axis TRANSY = {"y", BINS, -5, 10, "mm"};
 const Axis TRANSR = {"r", BINS, 0, 20, "mm"};
 

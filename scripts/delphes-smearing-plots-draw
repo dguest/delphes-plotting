@@ -38,7 +38,7 @@ def run():
             elif len(hist.axes) == 2:
                 hists2[name] = hist
         mahalanobis = {
-            x:Hist(h5['mahalanobis'][x]) for x in ['delphes','rave']}
+            x:Hist(h5['mahalanobis'][x]) for x in h5['mahalanobis']}
 
     _print_mahalanobis(mahalanobis, args)
 

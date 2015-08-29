@@ -11,6 +11,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from delphes.plotutils import Hist
 from delphes.colors import flavor_colors
+from delphes.mplutils import Canvas, draw2d, draw1d
 
 def _get_args():
     d = 'default: %(default)s'
@@ -23,6 +24,9 @@ def _get_args():
     return args
 
 _rev_plots = {'drjet', 'jetProb'}
+_ax_labels = {
+    'nsecvtx': r'$n$ Secondary Vertex',
+}
 
 def run():
     args = _get_args()
@@ -45,7 +49,7 @@ def _setup_ax(ax, textsize=16):
 
 def draw_btag_dist(flavors, out_name, xax_name, log=False):
     textsize = 16
-    fig = Figure(figsize=(8,6))
+    fig = Figure(figsize=(5.0,5.0*3/4))
     canvas = FigureCanvas(fig)
     ax = fig.add_subplot(1,1,1)
 
@@ -70,8 +74,8 @@ def draw_btag_dist(flavors, out_name, xax_name, log=False):
         ax.set_ylim(1, ax.get_ylim()[1]*2)
         ax.set_yscale('log')
     ax.set_xlim(*xax.lims)
-    ax.set_ylabel('n jets', y=0.98, ha='right', size=textsize)
-    x_name = '{} [{}]'.format(xax_name, xax.units)
+    ax.set_ylabel(r'$n$ jets', y=0.98, ha='right', size=textsize)
+    x_name = _ax_labels.get(xax_name, '{} [{}]'.format(xax_name, xax.units))
     ax.set_xlabel(x_name, x=0.98, ha='right', size=textsize)
     # ax.set_ylabel('light rej', y=0.98, ha='right', size=textsize)
     canvas.print_figure(out_name, bbox_inches='tight')

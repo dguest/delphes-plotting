@@ -16,12 +16,24 @@ def _get_args():
     parser.add_argument('input_file')
     parser.add_argument('output_dir', nargs='?', default='highlevel')
     parser.add_argument('-e', '--ext', default='.pdf', help=d)
+    parser.add_argument('-p', '--pretty', action='store_true')
     args = parser.parse_args()
     return args
 
 _rev_plots = {'drjet', 'jetProb'}
-_colors = {}
-
+_sv_dummy = 'lsig'
+_colors = {
+    'jetProb': 'k',
+    _sv_dummy: 'gray',
+    'track2d0': 'blue',
+    'track3d0': 'green',
+}
+_labels = {
+    'jetProb': 'JetProb',
+    _sv_dummy: 'SV',
+    'track2d0': r'2nd $d_0$',
+    'track3d0': r'3rd $d_0$',
+}
 def run():
     args = _get_args()
     plots = {}
@@ -31,7 +43,9 @@ def run():
             bottom = h5['bottom'][ds_name]
             rev = (ds_name in _rev_plots)
             eff, rej = _get_roc_xy(bottom, light, rev, mineff=0.3)
-            color = _colors.get(ds_name)
+            color = _colors.get(ds_name) if args.pretty else None
+            if args.pretty and not color:
+                continue
             plots[ds_name] = (color, eff, rej)
 
     out_dir = args.output_dir
@@ -40,7 +54,8 @@ def run():
 
     out_base='roc.{}'.format(args.ext.lstrip('.'))
     outname = os.path.join(out_dir, out_base)
-    draw_btag_roc(plots, outname)
+    pllist = [(x, y[0], y[1], y[2]) for x, y in plots.items()]
+    draw_btag_roc(sorted(pllist), outname)
 
 def _get_roc_xy(eff_ds, rej_ds, rev=False, mineff=0.3):
     sl = slice(None,None,-1) if not rev else slice(None)
@@ -69,19 +84,20 @@ def draw_btag_roc(legdic, out_name):
     ax = fig.add_subplot(1,1,1)
     _setup_ax(ax)
 
-    for leg, (color, eff, rej) in legdic.items():
+    for (leg, color, eff, rej) in legdic:
         opts = dict(lw=4)
         if color:
             opts['color'] = color
-        ax.plot(eff, rej, '-', label=leg, **opts)
+        label = _labels.get(leg, leg)
+        ax.plot(eff, rej, '-', label=label, **opts)
 
     out_dir = os.path.dirname(out_name)
     if out_dir and not os.path.isdir(out_dir):
         os.mkdir(out_dir)
     ax.legend(framealpha=0)
-    ax.set_ylim(1, 1e4)
-    ax.set_xlabel('b eff', x=0.98, ha='right', size=textsize)
-    ax.set_ylabel('light rej', y=0.98, ha='right', size=textsize)
+    ax.set_ylim(1, 1e3)
+    ax.set_xlabel('$b$-tagging Efficiency', x=0.98, ha='right', size=textsize)
+    ax.set_ylabel('Light Jet Rejection', y=0.98, ha='right', size=textsize)
     canvas.print_figure(out_name, bbox_inches='tight')
 
 if __name__ == '__main__':

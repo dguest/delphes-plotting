@@ -85,7 +85,9 @@ namespace {
     const std::vector<SecondaryVertex>& input) {
     std::map<std::string, std::vector<SecondaryVertex> > out;
     for (auto vx: input) {
-      out[vx.config].push_back(vx);
+      std::string key = vx.config;
+      key.erase(std::remove(key.begin(), key.end(), ':'), key.end());
+      out[key].push_back(vx);
     }
     return out;
   }

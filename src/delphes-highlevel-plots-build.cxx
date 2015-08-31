@@ -51,6 +51,7 @@ struct Hists
   Histogram drjet;
   Histogram mass;
   Histogram nsecvtx;
+  Histogram efrac;
 };
 
 // const float D0_RANGE = 1.0;
@@ -66,7 +67,8 @@ Hists::Hists():
   lsig(BINS, 0, 7, "log1p", flags),
   drjet(BINS, 0, 10, "", flags),
   mass(BINS, 0, 10, "GeV", flags),
-  nsecvtx(MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, "", flags)
+  nsecvtx(MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, "", flags),
+  efrac(BINS, 0, 1.00001, "", flags)
 {
 }
 
@@ -79,6 +81,7 @@ void Hists::save(H5::CommonFG& out_h5) {
   WRITE(drjet);
   WRITE(mass);
   WRITE(nsecvtx);
+  WRITE(efrac);
 #undef WRITE
 }
 void Hists::save(H5::CommonFG& out_file, const std::string& name) {
@@ -95,6 +98,7 @@ namespace {
     hists.drjet.fill(jet.svDrJet);
     hists.mass.fill(jet.svMass);
     hists.nsecvtx.fill(jet.svNVertex < 0 ? 0 : jet.svNVertex);
+    hists.efrac.fill(jet.svEnergyFraction);
   }
 }
 

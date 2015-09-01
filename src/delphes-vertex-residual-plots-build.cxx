@@ -161,7 +161,7 @@ namespace {
       }
     }
     const auto& sec = jet.SecondaryVertices.at(max_trks_idx);
-    auto reco = alignWithJet({sec.X(), sec.Y(), sec.Z()}, jet);
+    auto reco = alignWithJet({sec.x, sec.y, sec.z}, jet);
     size_t n_vx = jet.TruthVertices.size();
     if (n_vx == 0) {
       hists.light.fill(reco.map());
@@ -192,7 +192,7 @@ namespace {
   void fill_reco(FlavorHists<Hists>& hists, const Jet& jet) {
     int flav = jet.Flavor;
     for (const auto& vx: jet.SecondaryVertices) {
-      Point reco = alignWithJet(as_point<TVector3>(vx), jet);
+      Point reco = alignWithJet(as_point(vx), jet);
       if (flav == 5) {
 	hists.bottom.fill(reco.map());
       } else if (flav == 4) {
@@ -206,7 +206,7 @@ namespace {
     if (jet.SecondaryVertices.size() == 0) return;
     for (const auto& vx: jet.TruthVertices) {
       int flav = truth::major_quark(vx.pdgid);
-      Point reco = as_point<TVector3>(jet.SecondaryVertices.at(0));
+      Point reco = as_point(jet.SecondaryVertices.at(0));
       Point trth = as_point(vx);
       if (flav == 5) {
 	hists.bottom.fill(trth, reco);

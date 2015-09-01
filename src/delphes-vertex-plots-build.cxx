@@ -57,9 +57,9 @@ namespace var {
   const Axes sv_vars{PT, ETA, LSIG, NVTX, NTRK, DRJV, MASS};
   // const std::vector<Axis> all_vars{PT, ETA, LXY, EFRC, MASS, NTRK};
   const DMap jet_var_map(const Jet* jet);
-  const DMap vx_var_map(const Jet& jet, const SecondaryVertex& vxn);
+  const DMap vx_var_map(const Jet& jet, const TSecondaryVertex& vxn);
   const DMap sv_var_map(const Jet& jet,
-			  const std::vector<SecondaryVertex>& vertices);
+			  const std::vector<TSecondaryVertex>& vertices);
 }
 std::ostream& operator<<(std::ostream& os, const var::DMap&);
 
@@ -81,9 +81,9 @@ namespace {
     return fixed;
   }
 
-  std::map<std::string, std::vector<SecondaryVertex> > sort_by_algo(
-    const std::vector<SecondaryVertex>& input) {
-    std::map<std::string, std::vector<SecondaryVertex> > out;
+  std::map<std::string, std::vector<TSecondaryVertex> > sort_by_algo(
+    const std::vector<TSecondaryVertex>& input) {
+    std::map<std::string, std::vector<TSecondaryVertex> > out;
     for (auto vx: input) {
       std::string key = vx.config;
       key.erase(std::remove(key.begin(), key.end(), ':'), key.end());
@@ -92,7 +92,8 @@ namespace {
     return out;
   }
 
-  bool less_significant(const SecondaryVertex& v1, const SecondaryVertex& v2) {
+  bool less_significant(const TSecondaryVertex& v1,
+			const TSecondaryVertex& v2) {
     return v1.Lsig < v2.Lsig;
   }
 
@@ -239,11 +240,12 @@ namespace var {
       {NVTX.name , max_vx},
     };
   } // end jet_var_map
-  const DMap vx_var_map(const Jet& jet, const SecondaryVertex& vx) {
+  const DMap vx_var_map(const Jet& jet, const TSecondaryVertex& vx) {
     TVector3 jvec;
     jvec.SetPtEtaPhi(jet.PT, jet.Eta, jet.Phi);
-    double drjv = jvec.DeltaR(vx);
-    double dphi = jvec.DeltaPhi(vx);
+    TVector3 vxvec(vx.x, vx.y, vx.z);
+    double drjv = jvec.DeltaR(vxvec);
+    double dphi = jvec.DeltaPhi(vxvec);
     return {
       {PT.name, jet.PT},
       {ETA.name, jet.Eta},
@@ -257,8 +259,8 @@ namespace var {
     };
   } // end vx_var_map
   const DMap sv_var_map(const Jet& jet,
-			const std::vector<SecondaryVertex>& vertices) {
-    std::vector<SecondaryVertex> over_sig_threshold;
+			const std::vector<TSecondaryVertex>& vertices) {
+    std::vector<TSecondaryVertex> over_sig_threshold;
     DMap output {
       {PT.name, jet.PT},
       {ETA.name, jet.Eta},
@@ -277,14 +279,15 @@ namespace var {
     const size_t n_vtx = vertices.size();
     for (size_t vxn = 1; vxn < n_vtx; vxn++) {
       const auto& vx = vertices.at(vxn);
+      TVector3 vxv(vx.x, vx.y, vx.z);
       sum_vertices++;
-      double delta_r = jvec.DeltaR(vx);
+      double delta_r = jvec.DeltaR(vxv);
       sum_dr_tracks += vx.nTracks * delta_r;
       sum_tracks += vx.nTracks;
 
       sum_mass += vx.mass;
 
-      sum_sig += vx.Mag() / vx.decayLengthVariance;
+      sum_sig += vxv.Mag() / vx.decayLengthVariance;
       sum_inverr += 1/vx.decayLengthVariance;
     }
     bool has_vx = (sum_vertices) > 0 && (sum_tracks > 0);

@@ -45,9 +45,13 @@ struct Hists
   Histogram jetProb;
   Histogram track2d0;
   Histogram track3d0;
+  Histogram n_sig_track;	// do
+  Histogram delta_eta;		// do
+  Histogram delta_phi;		// do
 
   // vertex based
   Histogram lsig;
+  Histogram n_vx_track;		// do
   Histogram drjet;
   Histogram mass;
   Histogram nsecvtx;
@@ -57,14 +61,20 @@ struct Hists
 // const float D0_RANGE = 1.0;
 // const float Z0_RANGE = 2.0;
 const size_t BINS = 10000;
-const unsigned flags = 0;
+const unsigned flags = hist::eat_nan;
 const unsigned MAX_VERTEX = 4;
+const unsigned MAX_TRACKS = 25;
 
 Hists::Hists():
   jetProb(BINS, -50, 0, "log", flags),
   track2d0(BINS, -2, 20, "", flags),
   track3d0(BINS, -2, 20, "", flags),
+  n_sig_track(MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, "", flags),
+  delta_eta(BINS, -3, 3, "", flags),
+  delta_phi(BINS, -3.1416, 3.1416, "", flags),
+
   lsig(BINS, 0, 7, "log1p", flags),
+  n_vx_track(MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, "", flags),
   drjet(BINS, 0, 10, "", flags),
   mass(BINS, 0, 10, "GeV", flags),
   nsecvtx(MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, "", flags),
@@ -77,7 +87,12 @@ void Hists::save(H5::CommonFG& out_h5) {
   WRITE(jetProb);
   WRITE(track2d0);
   WRITE(track3d0);
+  WRITE(n_sig_track);
+  WRITE(delta_eta);
+  WRITE(delta_phi);
+
   WRITE(lsig);
+  WRITE(n_vx_track);
   WRITE(drjet);
   WRITE(mass);
   WRITE(nsecvtx);
@@ -94,7 +109,12 @@ namespace {
     hists.jetProb.fill(jet.jetProb >= 0 ? std::log(jet.jetProb): -1);
     hists.track2d0.fill(jet.track2d0sig);
     hists.track3d0.fill(jet.track3d0sig);
+    hists.n_sig_track.fill(jet.tracksOverIpThreshold);
+    hists.delta_eta.fill(jet.jetWidthEta);
+    hists.delta_phi.fill(jet.jetWidthPhi);
+
     hists.lsig.fill(jet.svLsig > 0 ? std::log1p(jet.svLsig): -1);
+    hists.n_vx_track.fill(jet.svNTracks < 0 ? 0 : jet.svNTracks);
     hists.drjet.fill(jet.svDrJet);
     hists.mass.fill(jet.svMass);
     hists.nsecvtx.fill(jet.svNVertex < 0 ? 0 : jet.svNVertex);

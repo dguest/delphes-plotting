@@ -45,13 +45,13 @@ struct Hists
   Histogram jetProb;
   Histogram track2d0;
   Histogram track3d0;
-  Histogram n_sig_track;	// do
-  Histogram delta_eta;		// do
-  Histogram delta_phi;		// do
+  Histogram n_sig_track;
+  Histogram width_eta;
+  Histogram width_phi;
 
   // vertex based
   Histogram lsig;
-  Histogram n_vx_track;		// do
+  Histogram n_vx_track;
   Histogram drjet;
   Histogram mass;
   Histogram nsecvtx;
@@ -70,8 +70,8 @@ Hists::Hists():
   track2d0(BINS, -2, 20, "", flags),
   track3d0(BINS, -2, 20, "", flags),
   n_sig_track(MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, "", flags),
-  delta_eta(BINS, -3, 3, "", flags),
-  delta_phi(BINS, -3.1416, 3.1416, "", flags),
+  width_eta(BINS, 0, 0.5, "", flags),
+  width_phi(BINS, 0, 0.5, "", flags),
 
   lsig(BINS, 0, 7, "log1p", flags),
   n_vx_track(MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, "", flags),
@@ -88,8 +88,8 @@ void Hists::save(H5::CommonFG& out_h5) {
   WRITE(track2d0);
   WRITE(track3d0);
   WRITE(n_sig_track);
-  WRITE(delta_eta);
-  WRITE(delta_phi);
+  WRITE(width_eta);
+  WRITE(width_phi);
 
   WRITE(lsig);
   WRITE(n_vx_track);
@@ -110,8 +110,8 @@ namespace {
     hists.track2d0.fill(jet.track2d0sig);
     hists.track3d0.fill(jet.track3d0sig);
     hists.n_sig_track.fill(jet.tracksOverIpThreshold);
-    hists.delta_eta.fill(jet.jetWidthEta);
-    hists.delta_phi.fill(jet.jetWidthPhi);
+    hists.width_eta.fill(jet.jetWidthEta);
+    hists.width_phi.fill(jet.jetWidthPhi);
 
     hists.lsig.fill(jet.svLsig > 0 ? std::log1p(jet.svLsig): -1);
     hists.n_vx_track.fill(jet.svNTracks < 0 ? 0 : jet.svNTracks);

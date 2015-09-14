@@ -4,6 +4,7 @@ import numpy as np
 from h5py import File
 import argparse
 import numpy.ma as ma
+import itertools
 # import math
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
@@ -34,6 +35,9 @@ _labels = {
     'track2d0': r'2nd $d_0$',
     'track3d0': r'3rd $d_0$',
 }
+
+_styles = itertools.product(['-','--', ':'], 'rgbcmyk')
+
 def run():
     args = _get_args()
     plots = {}
@@ -43,10 +47,15 @@ def run():
             bottom = h5['bottom'][ds_name]
             rev = (ds_name in _rev_plots)
             eff, rej = _get_roc_xy(bottom, light, rev, mineff=0.3)
-            color = _colors.get(ds_name) if args.pretty else None
+            if args.pretty:
+                color = _colors.get(ds_name)
+                style = '-'
+            else:
+                style, color = next(_styles)
+
             if args.pretty and not color:
                 continue
-            plots[ds_name] = (color, eff, rej)
+            plots[ds_name] = (color, style, eff, rej)
 
     out_dir = args.output_dir
     if not os.path.isdir(out_dir):
@@ -54,7 +63,7 @@ def run():
 
     out_base='roc.{}'.format(args.ext.lstrip('.'))
     outname = os.path.join(out_dir, out_base)
-    pllist = [(x, y[0], y[1], y[2]) for x, y in plots.items()]
+    pllist = [(x, y[0], y[1], y[2], y[3]) for x, y in plots.items()]
     draw_btag_roc(sorted(pllist), outname)
 
 def _get_roc_xy(eff_ds, rej_ds, rev=False, mineff=0.3):
@@ -84,12 +93,12 @@ def draw_btag_roc(legdic, out_name):
     ax = fig.add_subplot(1,1,1)
     _setup_ax(ax)
 
-    for (leg, color, eff, rej) in legdic:
+    for (leg, color, style, eff, rej) in legdic:
         opts = dict(lw=4)
-        if color:
-            opts['color'] = color
+        opts['color'] = color
+        opts['linestyle'] = style
         label = _labels.get(leg, leg)
-        ax.plot(eff, rej, '-', label=label, **opts)
+        ax.plot(eff, rej, label=label, **opts)
 
     out_dir = os.path.dirname(out_name)
     if out_dir and not os.path.isdir(out_dir):

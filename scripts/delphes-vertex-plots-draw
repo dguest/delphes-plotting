@@ -24,7 +24,7 @@ def _get_args():
     plots.add_argument('-j', '--jet', help='jet plots', **bopt)
     plots.add_argument('-v', '--vertex', help='vx plots', **bopt)
     plots.add_argument(
-        '-a', '--alg', default=None, nargs='?', const='avr', help=c)
+        '-a', '--alg', default=None, nargs='?', const='low-level', help=c)
     plots.add_argument('-t', '--tracks', help='track plots', **bopt)
     args = parser.parse_args()
     return args
@@ -93,9 +93,6 @@ def _print_track_plots(args, alg='low-level'):
     the_others = (algo_plots[x][alg] for x in algo_plots if x not in '45')
     others = _get_merged(next(the_others), the_others)
 
-    leg = {'red':'bottom', 'green':'charm', 'blue':'light'}
-    ax_dict = {n: a.axes for n, a in others.items()}
-
     def opath(base):
         out_name = '_'.join([alg, base]) + '.' + args.ext.lstrip('.')
         return os.path.join(args.output_dir, 'tracking', out_name)
@@ -114,11 +111,6 @@ def _print_track_plots(args, alg='low-level'):
         lhist.label = 'light'
         with Canvas(opath(var)) as can:
             draw1d(can, [bhist, chist, lhist])
-
-    # def ar(hdict):
-    #     return {n:a.hist for n, a in hdict.items()}
-
-    # _print_rgb(ar(bottom), ar(charm), ar(others), ax_dict, opath, leg=leg)
 
 
 def _print_vertex_plots(args):

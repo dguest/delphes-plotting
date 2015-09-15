@@ -105,7 +105,7 @@ void Hists::save(H5::CommonFG& out_file, const std::string& name) {
 }
 
 namespace {
-  void fill_hists(Hists& hists, const Jet& jet) {
+  void fill_hists(Hists& hists, const Jet& jet, bool do_ml) {
     hists.jetProb.fill(jet.jetProb >= 0 ? std::log(jet.jetProb): -1);
     hists.track2d0.fill(jet.track2d0sig);
     hists.track3d0.fill(jet.track3d0sig);
@@ -113,12 +113,14 @@ namespace {
     hists.width_eta.fill(jet.jetWidthEta);
     hists.width_phi.fill(jet.jetWidthPhi);
 
-    hists.lsig.fill(jet.svLsig > 0 ? std::log1p(jet.svLsig): -1);
-    hists.n_vx_track.fill(jet.svNTracks < 0 ? 0 : jet.svNTracks);
-    hists.drjet.fill(jet.svDrJet);
-    hists.mass.fill(jet.svMass);
-    hists.nsecvtx.fill(jet.svNVertex < 0 ? 0 : jet.svNVertex);
-    hists.efrac.fill(jet.svEnergyFraction);
+    const auto& hl_svx = do_ml ?
+      jet.MLSecondaryVertex : jet.HLSecondaryVertex;
+    hists.lsig.fill(hl_svx.svLsig > 0 ? std::log1p(hl_svx.svLsig): -1);
+    hists.n_vx_track.fill(hl_svx.svNTracks < 0 ? 0 : hl_svx.svNTracks);
+    hists.drjet.fill(hl_svx.svDrJet);
+    hists.mass.fill(hl_svx.svMass);
+    hists.nsecvtx.fill(hl_svx.svNVertex < 0 ? 0 : hl_svx.svNVertex);
+    hists.efrac.fill(hl_svx.svEnergyFraction);
   }
 }
 
@@ -127,20 +129,26 @@ struct FlavorHists
   Hists bottom;
   Hists charm;
   Hists light;
-  void fill(const Jet& jet);
+  void fill(const Jet& jet, bool do_ml);
   void save(H5::CommonFG& out);
+  void save(H5::CommonFG& out, std::string subdir);
 };
 
-void FlavorHists::fill(const Jet& jet) {
+void FlavorHists::fill(const Jet& jet, bool do_ml) {
   unsigned ftl = jet.Flavor;
-  if (ftl == 5) fill_hists(bottom, jet);
-  else if (ftl == 4) fill_hists(charm, jet);
-  else if (ftl == 1 || ftl == 2 || ftl == 21) fill_hists(light, jet);
+  if (ftl == 5) fill_hists(bottom, jet, do_ml);
+  else if (ftl == 4) fill_hists(charm, jet, do_ml);
+  else if (ftl < 4 || ftl == 21) fill_hists(light, jet, do_ml);
+  else assert(false);
 }
 void FlavorHists::save(H5::CommonFG& out) {
   bottom.save(out, "bottom");
   charm.save(out, "charm");
   light.save(out, "light");
+}
+void FlavorHists::save(H5::CommonFG& out, std::string subdir) {
+  auto subgroup = out.createGroup(subdir);
+  save(subgroup);
 }
 
 // ____________________________________________________
@@ -165,6 +173,7 @@ int main(int argc, char *argv[])
 
   Hists hists;
   FlavorHists flavhists;
+  FlavorHists flavhists_ml;
   using namespace std;
 
   // Loop over all events
@@ -184,15 +193,17 @@ int main(int argc, char *argv[])
       if (std::abs(jet->Eta) > 2.5) continue;
       if (std::abs(jet->PT) < 20) continue;
 
-      fill_hists(hists, *jet);
-      flavhists.fill(*jet);
+      fill_hists(hists, *jet, false);
+      flavhists.fill(*jet, false);
+      flavhists_ml.fill(*jet, true);
     } // end loop over jets
   }   // end loop over events
   std::cout << std::endl;
 
   H5::H5File out_file(cli.out_name, H5F_ACC_EXCL);
   hists.save(out_file, "all");
-  flavhists.save(out_file);
+  flavhists.save(out_file, "high-level");
+  flavhists_ml.save(out_file, "med-level");
   return 0;
 
 }

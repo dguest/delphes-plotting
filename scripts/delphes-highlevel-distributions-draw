@@ -20,6 +20,7 @@ def _get_args():
     parser.add_argument('input_file')
     parser.add_argument('output_dir', nargs='?', default='highlevel')
     parser.add_argument('-e', '--ext', default='.pdf', help=d)
+    parser.add_argument('-m', '--mid-level', action='store_true')
     args = parser.parse_args()
     return args
 
@@ -32,9 +33,10 @@ def run():
     args = _get_args()
     plots = defaultdict(dict)
     with File(args.input_file, 'r') as h5:
-        for ds_name in h5['light']:
+        level_hists = h5['med-level' if args.mid_level else 'high-level']
+        for ds_name in level_hists['light']:
             for flavor in ['light','bottom']:
-                plots[ds_name][flavor] = Hist(h5[flavor][ds_name])
+                plots[ds_name][flavor] = Hist(level_hists[flavor][ds_name])
 
     for distname, flavors in plots.items():
         out_name = '{}/{}.{}'.format(

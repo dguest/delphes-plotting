@@ -51,7 +51,7 @@ namespace var {
   const Axis MASS = {"mass", 100, 0, 15, "GeV"};
   const Axis NTRK = {"ntrk", MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, ""};
   const Axis NVTX = {"nvtx", MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""};
-  const Axis VXN  = {"vxn" , MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""};
+  const Axis VXN  = {"vxn" , MAX_VERTEX + 1,  0.5, MAX_VERTEX + 1.5, ""};
   const Axis DRJV = {"drjv", 100, 0, 4};
   const Axis DPHI = {"dphi", 100, -pi, pi};
   const Axes vx_vars{
@@ -116,8 +116,9 @@ namespace {
   struct VxHists {
     AllPlanes vertex;
     AllPlanes tracks;
+    AllPlanes tracks_hl;
     VxHists(var::Axes vxax, var::Axes trax):
-      vertex(vxax), tracks(trax, true)
+      vertex(vxax), tracks(trax, true), tracks_hl(trax, true)
       {
       };
   };
@@ -140,7 +141,7 @@ namespace {
       for (int iv = 0; iv < n_vx; iv++) {
 	counter["n vtx"]++;
 	auto vx_vars = var::vx_var_map(jet, vx_vec.at(iv));
-	vx_vars[var::VXN.name] = iv;
+	vx_vars[var::VXN.name] = iv + 1;
 	vx_vars[var::NVTX.name] = n_vx;
 	if (fix_nan(vx_vars, {var::LSIG.name})) counter["nan vx sig"]++;
 	auto& vert_map = vx_map[jet.Flavor][algo];
@@ -169,6 +170,11 @@ namespace {
 	for (const auto& trk: vx.tracks) {
 	  track_hists.fill(var::trk_var_map(trk));
 	}
+      }
+      // fill high-level tracks
+      auto& hl_track_hists = flav_map.at(algo).tracks_hl;
+      for (const auto& trk: jet.HLSecondaryVertexTracks) {
+	hl_track_hists.fill(var::trk_var_map(trk));
       }
     }   // end algo loop
   }
@@ -257,6 +263,7 @@ int main(int argc, char *argv[])
       std::to_string(flav_itr.first));
     for (const auto& algo_itr: flav_itr.second) {
       algo_itr.second.tracks.save_to(algo_group, algo_itr.first);
+      algo_itr.second.tracks_hl.save_to(algo_group, "high-level");
     }
   }
 

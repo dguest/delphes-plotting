@@ -32,8 +32,11 @@ const double pi = std::atan2(0, -1);
 
 const double VERTEX_MASS_MAX = 10;
 const unsigned MAX_JETS = 20;
-const unsigned MAX_TRACKS = 30;
+const unsigned MAX_TRACKS = 10;
 const unsigned MAX_VERTEX = 10;
+
+const float D0_RANGE = 1.0;
+const float Z0_RANGE = 2.0;
 
 // all the 2d hist stuff
 namespace var {
@@ -55,11 +58,24 @@ namespace var {
     PT, ETA, LXY, LSIG, EFRC, MASS, NTRK, DRJV, VXN, NVTX, DPHI};
   const Axes jet_vars{PT, ETA, NVTX};
   const Axes sv_vars{PT, ETA, LSIG, NVTX, NTRK, DRJV, MASS};
+
+  const Axis TRK_WT = {"weight", 100, 0, 1};
+  const Axis TRK_D0 = {"d0", 100, -D0_RANGE, D0_RANGE, "mm"};
+  const Axis TRK_Z0 = {"z0", 100, -Z0_RANGE, Z0_RANGE, "mm"};
+  const Axis TRK_D0SIG = {"d0sig", 100, -10, 10};
+  const Axis TRK_Z0SIG = {"z0sig", 100, -10, 10};
+  const Axis TRK_MOMENTUM = {"momentum", 100, 0, 100, "GeV"};
+  const Axis TRK_DPHI = {"dphi", 100, -0.5, 0.5};
+  const Axis TRK_DETA = {"deta", 100, -0.5, 0.5};
+  const Axes trk_vars {
+    TRK_WT, TRK_D0, TRK_Z0, TRK_D0SIG, TRK_Z0SIG, TRK_MOMENTUM,
+      TRK_DPHI, TRK_DETA};
   // const std::vector<Axis> all_vars{PT, ETA, LXY, EFRC, MASS, NTRK};
   const DMap jet_var_map(const Jet* jet);
   const DMap vx_var_map(const Jet& jet, const TSecondaryVertex& vxn);
   const DMap sv_var_map(const Jet& jet,
 			  const std::vector<TSecondaryVertex>& vertices);
+  const DMap trk_var_map(const TSecondaryVertexTrack& track);
 }
 std::ostream& operator<<(std::ostream& os, const var::DMap&);
 
@@ -97,8 +113,17 @@ namespace {
     return v1.Lsig < v2.Lsig;
   }
 
+  struct VxHists {
+    AllPlanes vertex;
+    AllPlanes tracks;
+    VxHists(var::Axes vxax, var::Axes trax):
+      vertex(vxax), tracks(trax, true)
+      {
+      };
+  };
+
   typedef std::map<int,std::map<std::string,std::map<int, AllPlanes>>> VxMap;
-  typedef std::map<int,std::map<std::string,AllPlanes> > HlVarMap;
+  typedef std::map<int,std::map<std::string, VxHists> > HlVarMap;
   typedef std::map<std::string, int> IMap;
 
   void fill_svx(VxMap& vx_map, HlVarMap& hl_map,
@@ -134,9 +159,17 @@ namespace {
       // 		<< std::endl;
       auto& flav_map = hl_map[jet.Flavor];
       if (!flav_map.count(algo)) {
-	flav_map.emplace(algo, var::sv_vars);
+	flav_map.emplace(algo, VxHists(var::sv_vars, var::trk_vars));
       }
-      flav_map.at(algo).fill(sv_vars);
+      flav_map.at(algo).vertex.fill(sv_vars);
+
+      // loop over constituent tracks
+      auto& track_hists = flav_map.at(algo).tracks;
+      for (const auto& vx: vx_vec) {
+	for (const auto& trk: vx.tracks) {
+	  track_hists.fill(var::trk_var_map(trk));
+	}
+      }
     }   // end algo loop
   }
 
@@ -215,7 +248,15 @@ int main(int argc, char *argv[])
     auto algo_group = by_flavor_algo.createGroup(
       std::to_string(flav_itr.first));
     for (const auto& algo_itr: flav_itr.second) {
-      algo_itr.second.save_to(algo_group, algo_itr.first);
+      algo_itr.second.vertex.save_to(algo_group, algo_itr.first);
+    }
+  }
+  auto tracks = out_file.createGroup("tracks");
+  for (const auto& flav_itr: hl_map) {
+    auto algo_group = tracks.createGroup(
+      std::to_string(flav_itr.first));
+    for (const auto& algo_itr: flav_itr.second) {
+      algo_itr.second.tracks.save_to(algo_group, algo_itr.first);
     }
   }
 
@@ -240,6 +281,20 @@ namespace var {
       {NVTX.name , max_vx},
     };
   } // end jet_var_map
+
+  const DMap trk_var_map(const TSecondaryVertexTrack& trk) {
+    return {
+      {TRK_WT.name, trk.weight},
+      {TRK_D0.name, trk.d0},
+      {TRK_Z0.name, trk.z0},
+      {TRK_D0SIG.name, trk.d0 / trk.d0err},
+      {TRK_Z0SIG.name, trk.z0 / trk.z0err},
+      {TRK_MOMENTUM.name, trk.momentum},
+      {TRK_DPHI.name, trk.dphi},
+      {TRK_DETA.name, trk.deta}
+    };
+  }
+
   const DMap vx_var_map(const Jet& jet, const TSecondaryVertex& vx) {
     TVector3 jvec;
     jvec.SetPtEtaPhi(jet.PT, jet.Eta, jet.Phi);

@@ -64,11 +64,11 @@ namespace var {
   const Axis TRK_Z0 = {"z0", 100, -Z0_RANGE, Z0_RANGE, "mm"};
   const Axis TRK_D0SIG = {"d0sig", 100, -10, 10};
   const Axis TRK_Z0SIG = {"z0sig", 100, -10, 10};
-  const Axis TRK_MOMENTUM = {"momentum", 100, 0, 100, "GeV"};
+  const Axis TRK_PT = {"pt", 100, 0, 100, "GeV"};
   const Axis TRK_DPHI = {"dphi", 100, -0.5, 0.5};
   const Axis TRK_DETA = {"deta", 100, -0.5, 0.5};
   const Axes trk_vars {
-    TRK_WT, TRK_D0, TRK_Z0, TRK_D0SIG, TRK_Z0SIG, TRK_MOMENTUM,
+    TRK_WT, TRK_D0, TRK_Z0, TRK_D0SIG, TRK_Z0SIG, TRK_PT,
       TRK_DPHI, TRK_DETA};
   // const std::vector<Axis> all_vars{PT, ETA, LXY, EFRC, MASS, NTRK};
   const DMap jet_var_map(const Jet* jet);
@@ -296,7 +296,7 @@ namespace var {
       {TRK_Z0.name, trk.z0},
       {TRK_D0SIG.name, trk.d0 / trk.d0err},
       {TRK_Z0SIG.name, trk.z0 / trk.z0err},
-      {TRK_MOMENTUM.name, trk.momentum},
+      {TRK_PT.name, trk.pt},
       {TRK_DPHI.name, trk.dphi},
       {TRK_DETA.name, trk.deta}
     };

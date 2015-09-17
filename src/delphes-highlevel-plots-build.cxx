@@ -66,19 +66,21 @@ const unsigned MAX_VERTEX = 4;
 const unsigned MAX_TRACKS = 25;
 
 Hists::Hists():
-  jetProb(BINS, -50, 0, "log", flags),
-  track2d0(BINS, -2, 20, "", flags),
-  track3d0(BINS, -2, 20, "", flags),
-  n_sig_track(MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, "", flags),
-  width_eta(BINS, 0, 0.5, "", flags),
-  width_phi(BINS, 0, 0.5, "", flags),
+  jetProb({{"jetProb", BINS, -50, 0, "log"}}, flags),
+  track2d0({{"track2d0sig", BINS, -2, 20, ""}}, flags),
+  track3d0({{"track3d0sig", BINS, -2, 20, ""}}, flags),
+  n_sig_track({{"n_sig_track", MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, ""}},
+	      flags),
+  width_eta({{"width_eta", BINS, 0, 0.5, ""}}, flags),
+  width_phi({{"width_phi", BINS, 0, 0.5, ""}}, flags),
 
-  lsig(BINS, 0, 7, "log1p", flags),
-  n_vx_track(MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, "", flags),
-  drjet(BINS, 0, 10, "", flags),
-  mass(BINS, 0, 10, "GeV", flags),
-  nsecvtx(MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, "", flags),
-  efrac(BINS, 0, 1.00001, "", flags)
+  lsig({{"lsig", BINS, 0, 7, "log1p"}}, flags),
+  n_vx_track({{"n_vx_track", MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, ""}},
+	     flags),
+  drjet({{"drjet", BINS, 0, 10, ""}}, flags),
+  mass({{"mass", BINS, 0, 10, "GeV"}}, flags),
+  nsecvtx({{"nsecvtx", MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""}}, flags),
+  efrac({{"efrc", BINS, 0, 1.00001, ""}}, flags)
 {
 }
 

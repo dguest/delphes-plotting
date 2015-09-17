@@ -58,6 +58,8 @@ CXXFLAGS     += -I$(DELPHES) -I$(DELPHES)/external
 # LIBS         := -L$(ND_HIST_LIB) -Wl,-rpath,$(ND_HIST_LIB) -lndhist
 LIBS         := $(shell ndhist-config --libs)
 CXXFLAGS     += $(shell ndhist-config --cflags)
+LIBS          += $(shell pkg-config hdf5 --libs 2> /dev/null)
+CXXFLAGS      += $(shell pkg-config hdf5 --cflags 2> /dev/null)
 
 LDFLAGS      := #-Wl,--no-undefined
 

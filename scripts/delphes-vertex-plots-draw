@@ -7,6 +7,7 @@ import argparse
 import math
 from delphes.plotutils import FauxLogLocator, fauxify, Hist, is_h5_hist
 from delphes.mplutils import Canvas, draw2d, draw1d
+from delphes import varnames
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -24,7 +25,7 @@ def _get_args():
     plots.add_argument('-j', '--jet', help='jet plots', **bopt)
     plots.add_argument('-v', '--vertex', help='vx plots', **bopt)
     plots.add_argument(
-        '-a', '--alg', default=None, nargs='?', const='low-level', help=c)
+        '-a', '--alg', default=None, nargs='?', const='med-level', help=c)
     plots.add_argument('-t', '--tracks', help='track plots', **bopt)
     args = parser.parse_args()
     return args
@@ -49,7 +50,7 @@ def run():
     if args.tracks:
         _print_track_plots(args)
 
-def _print_algo_plots(args, alg='low-level'):
+def _print_algo_plots(args, alg='med-level'):
     """print vertex plots for one algorithm, color-code by flavor"""
     alg = args.alg
     with h5py.File(args.input_file, 'r') as h5file:
@@ -78,7 +79,7 @@ def _print_algo_plots(args, alg='low-level'):
     _print_rgb(ar(bottom), ar(charm), ar(others), ax_dict, opath, leg=leg)
 
 
-def _print_track_plots(args, alg='low-level'):
+def _print_track_plots(args, alg='med-level'):
     """print vertex plots for one algorithm, color-code by flavor"""
     with h5py.File(args.input_file, 'r') as h5file:
         fp = h5file['tracks']
@@ -175,7 +176,9 @@ def _print_rgb(red, green, blue, axes_dict, opath, leg=_def_leg):
     for plname in all_plot_names:
         rgb = red[plname], green[plname], blue[plname]
         if len(rgb[0].shape) == 2:
-            draw_rgb(*rgb, axes=axes_dict[plname], out_path=opath(plname),
+            subdir_plname = os.path.join('correlations', plname)
+            draw_rgb(*rgb, axes=axes_dict[plname],
+                     out_path=opath(subdir_plname),
                      leg=leg)
         xax = plname if '_' not in plname else plname.split('_')[0]
         if len(rgb[0].shape) == 1:
@@ -257,7 +260,7 @@ def draw_rgb(red, green, blue, axes, out_path, leg):
     _add_rgb_legend(ax, leg)
     out_dir, out_file = os.path.split(out_path)
     if not os.path.isdir(out_dir):
-        os.mkdir(out_dir)
+        os.makedirs(out_dir)
     print('printing {}'.format(out_path))
     canvas.print_figure(out_path, bbox_inches='tight')
 
@@ -280,21 +283,21 @@ def draw_1d(red, green, blue, axis, out_path, log=False, norm=False,
     ax = fig.add_subplot(1,1,1)
     xlims = axis.lims
     x_vals = np.linspace(*xlims, num=(rgb.shape[0] + 1))
-    y_lab = 'jets'
+    y_lab = r'$n$ Vertex'
     y_max = 0
     # plot the stuff
     for y_vals, color in zip(rgb.T, ['red','green','blue']):
         # print(out_path,y_vals, color)
         if norm:
             y_vals /= y_vals.sum()
-            y_lab = 'fraction of jets'
+            y_lab = 'Fraction of Vertices'
         ax.plot(x_vals, np.r_[y_vals, y_vals[-1]],
                 color=color, drawstyle='steps-post',
                 label=leg[color])
         y_max = max(y_max, nth_largest(y_vals, 2))
     ax.set_xlim(*xlims)
     xunit = fauxify(ax.get_xaxis(), axis.units, minval=0.1)
-    xname = axis.name
+    axis.name = varnames.labels.get(axis.name, axis.name)
     ax.set_xlabel(axis_name(axis, xunit), x=0.98, ha='right', size=_ax_size)
     ax.set_ylabel(y_lab, y=0.98, ha='right', size=_ax_size)
 
@@ -355,6 +358,7 @@ def draw_xproj(red, green, blue, axis, out_path, log=False, norm=False,
 
 def axis_name(ax, units):
     nm, un = ax.name, units
+    nm = varnames.labels.get(nm, nm)
     return '{} [{}]'.format(nm, un) if un else nm
 
 def _label_axes(ax, axes, size=12):

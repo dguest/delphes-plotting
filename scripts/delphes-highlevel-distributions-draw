@@ -12,6 +12,7 @@ from matplotlib.figure import Figure
 from delphes.plotutils import Hist
 from delphes.colors import flavor_colors
 from delphes.mplutils import Canvas, draw2d, draw1d
+from delphes import varnames
 
 def _get_args():
     d = 'default: %(default)s'
@@ -25,9 +26,7 @@ def _get_args():
     return args
 
 _rev_plots = {'drjet', 'jetProb'}
-_ax_labels = {
-    'nsecvtx': r'$n$ Secondary Vertex',
-}
+_ax_labels = varnames.labels
 
 def run():
     args = _get_args()

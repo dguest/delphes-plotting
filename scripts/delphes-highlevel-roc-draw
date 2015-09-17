@@ -10,6 +10,8 @@ import itertools
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+from delphes import varnames
+
 def _get_args():
     d = 'default: %(default)s'
     c = 'const: %(const)s'
@@ -23,19 +25,13 @@ def _get_args():
     return args
 
 _rev_plots = {'drjet', 'jetProb'}
-_sv_dummy = 'lsig'
 _colors = {
     'jetProb': 'k',
-    _sv_dummy: 'gray',
+    'lsig': 'gray',
     'track2d0': 'blue',
     'track3d0': 'green',
 }
-_labels = {
-    'jetProb': 'JetProb',
-    _sv_dummy: 'SV',
-    'track2d0': r'2nd $d_0$',
-    'track3d0': r'3rd $d_0$',
-}
+_labels = varnames.labels
 
 _styles = itertools.product(['-','--', ':'], 'rgbcmyk')
 
@@ -105,7 +101,7 @@ def draw_btag_roc(legdic, out_name):
     out_dir = os.path.dirname(out_name)
     if out_dir and not os.path.isdir(out_dir):
         os.mkdir(out_dir)
-    ax.legend(framealpha=0)
+    ax.legend(framealpha=0, ncol=2, prop=dict(size=8))
     ax.set_ylim(1, 1e3)
     ax.set_xlabel('$b$-tagging Efficiency', x=0.98, ha='right', size=textsize)
     ax.set_ylabel('Light Jet Rejection', y=0.98, ha='right', size=textsize)

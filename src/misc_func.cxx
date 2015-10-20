@@ -1,5 +1,6 @@
 #include "misc_func.hh"
 
+#include <cstring>
 #include <string>
 #include <fstream>
 #include <iostream>
@@ -29,13 +30,22 @@ int CLI::err_code() const {
 }
 
 void CLI::usage(std::string prname) {
-  std::cerr << "usage: " << prname << ": <input> [<output>]" << std::endl;
+  std::cerr << "usage: " << prname << ": [-h] <input> [<output>]"
+	    << std::endl;
 }
 int CLI::read(int argc, char* argv[]) {
   using namespace std;
   if (argc == 1 || argc > 3) {
     usage(argv[0]);
     return error(1);
+  } else {
+    for (int argn = 1; argn < argc; argn++) {
+      if (std::strcmp(argv[argn],"--help") == 0 ||
+	  std::strcmp(argv[argn],"-h") == 0) {
+	usage(argv[0]);
+	return error(1);
+      }
+    }
   }
 
   in_name = argv[1];

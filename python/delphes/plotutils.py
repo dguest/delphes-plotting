@@ -11,7 +11,11 @@ class Hist:
     """very simple wrapper for histogram info"""
     def __init__(self, base):
         self.hist = np.asarray(base)
-        self.axes = get_axes(base)
+        try:
+            self.axes = get_axes(base)
+        except KeyError as err:
+            raise OSError("{} doesn't seem to be a histogram".format(
+                str(base)))
     def __str__(self):
         return '{}-dim hist'.format(len(self.axes))
     def __repr__(self):
@@ -37,6 +41,7 @@ class Axis:
         prints = [self.name] + list(self.lims) + [self.units]
         return 'name: {}, range: {}-{}, units {}'.format(
             *(str(x) for x in prints))
+
 
 # _________________________________________________________________________
 # stuff to deal with log1p axes

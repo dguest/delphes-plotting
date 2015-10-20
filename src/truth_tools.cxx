@@ -16,7 +16,6 @@
 namespace {
   // we ignore `minor` particle changes
   bool is_significant_shift(int pid1, int pid2);
-  int major_quark(int pid);
   bool is_metastable_hadron_parent(int pid);
 
   TObject* walk_track(const Track* track, int& depth){
@@ -61,7 +60,7 @@ namespace {
     int pid = part->PID;
     // we only pay attention when the PID changes
     if (is_significant_shift(pid,history.back())){
-      history.push_back(std::copysign(major_quark(pid), pid));
+      history.push_back(std::copysign(truth::major_quark(pid), pid));
     }
     if (history.size() > target.size()) history.pop_front();
 
@@ -144,31 +143,14 @@ namespace {
   // some PIDs are ignored while walking the decay chain
   std::set<int> ignored_pid({91, 92, 93});
 
-  // get heaviest quark in the pdgid
-  int major_quark(int pid){
-    int absid = std::abs(pid);
-    if (absid <= 6) return absid;
-    int tens = (absid % 100) / 10;
-    int hundreds = (absid % 1000) / 100;
-    int thousands = (absid % 10000) / 1000;
-    // things with no quarks (tens and thousands == 0) just get abs pid
-    if (hundreds == 0 && thousands == 0) {
-      return absid;
-    }
-    // the leading digit should be larger than or equal to the lower ones
-    // special exception for K_short, number 130
-    assert(tens <= hundreds || tens <= thousands || absid == 130);
-    assert(thousands == 0 || hundreds <= thousands);
-    return std::max({tens, hundreds, thousands});
-  }
 
   bool is_significant_shift(int pid1, int pid2) {
     int absid1 = std::abs(pid1);
     int absid2 = std::abs(pid2);
 
     // index with `major_quark` function above
-    int major1 = major_quark(absid1);
-    int major2 = major_quark(absid2);
+    int major1 = truth::major_quark(absid1);
+    int major2 = truth::major_quark(absid2);
     return (major1 != major2);
   }
 
@@ -291,4 +273,23 @@ namespace truth {
     if (neg) base = flop_sign(base);
     return base;
   }
+
+  // get heaviest quark in the pdgid
+  int major_quark(int pid){
+    int absid = std::abs(pid);
+    if (absid <= 6) return absid;
+    int tens = (absid % 100) / 10;
+    int hundreds = (absid % 1000) / 100;
+    int thousands = (absid % 10000) / 1000;
+    // things with no quarks (tens and thousands == 0) just get abs pid
+    if (hundreds == 0 && thousands == 0) {
+      return absid;
+    }
+    // the leading digit should be larger than or equal to the lower ones
+    // special exception for K_short, number 130
+    assert(tens <= hundreds || tens <= thousands || absid == 130);
+    assert(thousands == 0 || hundreds <= thousands);
+    return std::max({tens, hundreds, thousands});
+  }
+
 }

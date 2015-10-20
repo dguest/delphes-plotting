@@ -20,7 +20,7 @@
 #include "truth_tools.hh"
 
 #include "H5Cpp.h"
-#include "Histogram.hh"
+#include "ndhist/Histogram.hh"
 
 // === define constants ===
 const double GeV = 1;
@@ -248,8 +248,12 @@ int main(int argc, char *argv[])
   std::map<int, int> b_decay_pids;
 
   // Loop over all events
+  std::cout << "looping over " << numberOfEntries << " entries" << std::endl;
+  int onem = std::max<int>(numberOfEntries / 1000, 1);
+
   for(Int_t entry = 0; entry < numberOfEntries; ++entry)
   {
+    if (entry % onem == 0) std::cout << entry << " processed\r" << std::flush;
     // Load selected branches with data from specified event
     treeReader->ReadEntry(entry);
 
@@ -259,7 +263,7 @@ int main(int argc, char *argv[])
     // loop over jets
     for (int i_jet = 0; i_jet < n_jets; i_jet++) {
       Jet* jet = root::as<Jet>(bJets->At(i_jet));
-      int n_constituents = jet->Constituents.GetEntriesFast();
+      int n_constituents = jet->Tracks.GetEntriesFast();
 
       // bool b_label = (jet->BTag & bit::B_FLAVOR);
       bool b_label = jet->Flavor == 5;
@@ -270,8 +274,7 @@ int main(int argc, char *argv[])
       // if (b_label) puts("new b-jet");
       // else puts("light jet");
       for (int iii = 0; iii < n_constituents; iii++) {
-        TObject* obj = jet->Constituents.At(iii);
-        if (!root::is<Track>(obj)) continue;
+        TObject* obj = jet->Tracks.At(iii);
         auto* track = root::as<Track>(obj);
         n_tracks++;
         track_by_pt[track->PT] = track;
@@ -336,6 +339,7 @@ int main(int argc, char *argv[])
       }
     } // end loop over jets
   }   // end loop over events
+  std::cout << std::endl;
   H5::H5File out_file(cli.out_name, H5F_ACC_EXCL);
   hists.save(out_file, "all_jets");
   b_jet_hists.save(out_file, "b_jets");

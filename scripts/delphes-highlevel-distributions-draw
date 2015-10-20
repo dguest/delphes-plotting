@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+import os, sys
+import numpy as np
+from h5py import File
+import argparse
+import numpy.ma as ma
+# import math
+from collections import defaultdict
+
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+from delphes.plotutils import Hist, fauxify
+from delphes.colors import flavor_colors
+from delphes.mplutils import Canvas, draw2d, draw1d
+from delphes import varnames
+
+def _get_args():
+    d = 'default: %(default)s'
+    c = 'const: %(const)s'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file')
+    parser.add_argument('output_dir', nargs='?', default='highlevel')
+    parser.add_argument('-e', '--ext', default='.pdf', help=d)
+    parser.add_argument('-m', '--mid-level', action='store_true')
+    args = parser.parse_args()
+    return args
+
+_rev_plots = {'drjet', 'jetProb'}
+_ax_labels = varnames.labels
+
+def run():
+    args = _get_args()
+    plots = defaultdict(dict)
+    with File(args.input_file, 'r') as h5:
+        level_hists = h5['med-level' if args.mid_level else 'high-level']
+        for ds_name in level_hists['light']:
+            for flavor in ['light','bottom']:
+                plots[ds_name][flavor] = Hist(level_hists[flavor][ds_name])
+
+    for distname, flavors in plots.items():
+        out_name = '{}/{}.{}'.format(
+            args.output_dir, distname, args.ext.lstrip('.'))
+        print('drawing {}'.format(out_name))
+        draw_btag_dist(flavors, out_name=out_name)
+
+def _setup_ax(ax, textsize=16):
+    ax.set_yscale('log')
+    ax.grid(which='both', linestyle='-', alpha=0.1)
+    ax.tick_params(labelsize=textsize, which='both')
+
+def draw_btag_dist(flavors, out_name, log=False):
+    textsize = 16
+    fig = Figure(figsize=(5.0,5.0*3/4))
+    canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(1,1,1)
+
+    for leg, hist in flavors.items():
+        xax = hist.axes[0]
+        y_vals = hist.hist[1:-1]
+        xraw = xax.name
+        while len(y_vals) > 500:
+            y_vals = y_vals.reshape([-1,10]).sum(axis=1)
+        x_vals = np.linspace(*xax.lims, num=(y_vals.shape[0] + 1))
+        draw_opts = dict()
+        color = flavor_colors.get(leg)
+        if color:
+            draw_opts['color'] = color
+        ax.plot(x_vals, np.r_[y_vals, y_vals[-1]], label=leg,
+                drawstyle='steps-post', **draw_opts)
+
+    out_dir = os.path.dirname(out_name)
+    if out_dir and not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+    ax.legend(framealpha=0)
+    if log:
+        ax.set_ylim(1, ax.get_ylim()[1]*2)
+        ax.set_yscale('log')
+    ax.set_xlim(*xax.lims)
+    ax.set_ylabel(r'$n$ jets', y=0.98, ha='right', size=textsize)
+    units = fauxify(ax.get_xaxis(), xax.units, minval=0.1)
+    x_var = _ax_labels.get(xraw, xraw)
+    x_name = '{} [{}]'.format(x_var, units) if units else x_var
+    ax.set_xlabel(x_name, x=0.98, ha='right', size=textsize)
+    # ax.set_ylabel('light rej', y=0.98, ha='right', size=textsize)
+    canvas.print_figure(out_name, bbox_inches='tight')
+
+if __name__ == '__main__':
+    run()

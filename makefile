@@ -58,6 +58,8 @@ CXXFLAGS     += -I$(DELPHES) -I$(DELPHES)/external
 # LIBS         := -L$(ND_HIST_LIB) -Wl,-rpath,$(ND_HIST_LIB) -lndhist
 LIBS         := $(shell ndhist-config --libs)
 CXXFLAGS     += $(shell ndhist-config --cflags)
+LIBS          += $(shell pkg-config hdf5 --libs 2> /dev/null)
+CXXFLAGS      += $(shell pkg-config hdf5 --cflags 2> /dev/null)
 
 LDFLAGS      := #-Wl,--no-undefined
 
@@ -69,6 +71,9 @@ LIBS         += -lDelphes
 # --- HDF5 needed for hist saving
 LIBS         += -lhdf5_cpp -lhdf5
 
+# --- Eigen
+CXXFLAGS     += $(shell pkg-config eigen3 --cflags)
+
 # --- rootstuff
 CXXFLAGS     += $(ROOTCFLAGS)
 LDFLAGS      += $(ROOTLDFLAGS)
@@ -78,9 +83,12 @@ LIBS         += $(ROOTLIBS)
 GEN_OBJ     := ExRootTreeReader.o misc_func.o truth_tools.o AllPlanes.o
 TOP_OBJ     += delphes-tracking-plots-build.o
 TOP_OBJ     += delphes-vertex-plots-build.o
+TOP_OBJ     += delphes-highlevel-plots-build.o
+TOP_OBJ     += delphes-vertex-residual-plots-build.o
+TOP_OBJ     += delphes-smearing-plots-build.o
 
 # stuff used for the c++ executable
-ALL_EXE    := delphes-tracking-plots-build delphes-vertex-plots-build
+ALL_EXE    := $(TOP_OBJ:%.o=%)
 
 GEN_OBJ_PATHS := $(GEN_OBJ:%=$(BUILD)/%)
 TOP_OBJ_PATHS := $(TOP_OBJ:%=$(BUILD)/%)

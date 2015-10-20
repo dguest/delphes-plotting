@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+
+
+import os, sys
+import numpy as np
+from h5py import File
+import argparse
+
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+from matplotlib.colors import LogNorm
+from delphes.plotutils import Hist, is_h5_hist
+from delphes.mplutils import Canvas, draw2d, draw1d
+
+from scipy.stats import chi2
+
+def _get_args():
+    d = 'default: %(default)s'
+    c = 'const: %(const)s'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file')
+    parser.add_argument('output_dir', nargs='?', default='smearing', help=d)
+    parser.add_argument('-e', '--ext', default='.pdf', help=d)
+    args = parser.parse_args()
+    return args
+
+def run():
+    args = _get_args()
+
+    # load histograms
+    hists1 = {}
+    hists2 = {}
+    with File(args.input_file, 'r') as h5:
+        for name, dataset in h5['all']['delphes'].items():
+            hist = Hist(dataset)
+            if len(hist.axes) == 1:
+                hists1[name] = hist
+            elif len(hist.axes) == 2:
+                hists2[name] = hist
+        mahalanobis = {
+            x:Hist(h5['mahalanobis'][x]) for x in h5['mahalanobis']}
+
+    _print_mahalanobis(mahalanobis, args)
+
+    def outnm(name):
+        out = os.path.join(args.output_dir, '{}.pdf'.format(name))
+        print('drawing {}'.format(out))
+        return out
+    # draw 2d
+    for name, hist in hists2.items():
+        with Canvas(outnm(name)) as can:
+            draw2d(can, hist)
+    # draw 1d
+    for name, hist in hists1.items():
+        with Canvas(outnm(name)) as can:
+            draw1d(can, [hist])
+
+def _print_mahalanobis(mahalanobis, args):
+    hists = []
+    for name, hist in mahalanobis.items():
+        ar = hist.hist
+        xax = hist.axes[0]
+        bin_size = (xax.lims[1] - xax.lims[0]) / (ar.size - 2)
+        hist.norm = 1 / (ar.sum() * bin_size)
+        hist.label = name + r"$\chi^2$"
+        hists.append(hist)
+
+    with Canvas(args.output_dir + '/mahalanobis.pdf') as can:
+        dist = chi2(5)
+        xp = np.linspace(0, 10, num=100)
+        yp = dist.pdf(xp)
+        can.ax.plot(xp, yp, label=r'$\chi^2$ df = 5')
+        draw1d(can, hists)
+
+if __name__ == '__main__':
+    run()

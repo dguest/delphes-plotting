@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 bool exists(const std::string& file_name) {
   std::ifstream file(file_name.c_str(), std::ios::binary);

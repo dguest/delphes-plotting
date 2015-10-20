@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
   }   // end loop over events
   std::cout << std::endl;
 
-  H5::H5File out_file(cli.out_file(), H5F_ACC_EXCL);
+  H5::H5File out_file(cli.out_file(), H5F_ACC_TRUNC);
   flavhists.save(out_file, "jet_vars");
   return 0;
 

@@ -107,13 +107,17 @@ FileCLI::FileCLI(int nargs, char* argc[]):
 
 void FileCLI::usage() const
 {
-  std::cerr << "usage: " << m_name << ": [options] <inputs>... -o <output>"
-	    << std::endl;
+  std::cerr << "usage: " << m_name << ": [options] <inputs>... -o <output>\n"
+	    << "\n"
+	    << "options:\n"
+	    << " -h, --help: print this help\n"
+	    << " -f: overwrite output\n"
+    ;
 }
 
 int FileCLI::check_opts(int argn) {
   std::string arg = m_args.at(argn);
-  bool compound = arg.size() > 1 && (arg.at(0) == '-');
+  bool compound = arg.size() > 1 && (arg.at(0) == '-') && (arg.at(1) != '-');
   if ( (arg == "--help") || (compound && strchr(arg.c_str(), 'h') ) ) {
     usage();
     exit(1);

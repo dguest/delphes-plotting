@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+
+import os, sys
+import numpy as np
+from h5py import File
+import argparse
+
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+from matplotlib.colors import LogNorm
+from delphes.plotutils import Hist, is_h5_hist
+from delphes.mplutils import Canvas, draw2d, draw1d
+
+def _get_args():
+    d = 'default: %(default)s'
+    c = 'const: %(const)s'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file')
+    parser.add_argument('output_dir', nargs='?', default='jet_pt', help=d)
+    parser.add_argument('-e', '--ext', default='.pdf', help=d)
+    args = parser.parse_args()
+    return args
+
+def run():
+    args = _get_args()
+    jet_pt = []
+    with File(args.input_file, 'r') as h5:
+        for flavor, plots in h5['jet_vars'].items():
+            hist = Hist(plots['jet_pt'])
+            hist.label = flavor
+            jet_pt.append(hist)
+
+    def oname(base):
+        return os.path.join(args.output_dir, base + args.ext)
+    with Canvas(oname('jetpt')) as can:
+        draw1d(can,jet_pt)
+
+
+if __name__ == '__main__':
+    run()

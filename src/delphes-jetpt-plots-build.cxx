@@ -43,21 +43,35 @@ struct Hists
   void save(H5::CommonFG&, const std::string&);
   // tracking based
   Histogram jet_pt;
+  Histogram n_primary_tracks;
+  Histogram n_secondary_vertices;
+  Histogram n_tracks_in_secondary;
 };
 
 // const float D0_RANGE = 1.0;
 // const float Z0_RANGE = 2.0;
 const size_t BINS = 500;
 const unsigned flags = 0;
+const unsigned MAX_TRACKS = 10;
+const unsigned MAX_VERTEX = 10;
 
 Hists::Hists():
-  jet_pt({{"jet_pt", BINS, 0, 1000, "GeV"}}, flags)
+  jet_pt({{"jet_pt", BINS, 0, 250, "GeV"}}, flags),
+  n_primary_tracks({{"n_primary_tracks",
+	  MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, ""}}, flags),
+  n_secondary_vertices({{"n_secondary_vertices",
+	  MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""}}, flags),
+  n_tracks_in_secondary({{"n_tracks_in_secondary",
+	  MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""}}, flags)
 {
 }
 
 void Hists::save(H5::CommonFG& out_h5) {
 #define WRITE(VAR) VAR.write_to(out_h5, #VAR)
   WRITE(jet_pt);
+  WRITE(n_primary_tracks);
+  WRITE(n_secondary_vertices);
+  WRITE(n_tracks_in_secondary);
 #undef WRITE
 }
 void Hists::save(H5::CommonFG& out_file, const std::string& name) {
@@ -68,6 +82,11 @@ void Hists::save(H5::CommonFG& out_file, const std::string& name) {
 namespace {
   void fill_hists(Hists& hists, const Jet& jet) {
     hists.jet_pt.fill(jet.PT);
+    hists.n_primary_tracks.fill(jet.PrimaryVertexTracks.size());
+    hists.n_secondary_vertices.fill(jet.SecondaryVertices.size());
+    for (const auto& vx: jet.SecondaryVertices) {
+      hists.n_tracks_in_secondary.fill(vx.tracks.size());
+    }
   }
 }
 

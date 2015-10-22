@@ -10,6 +10,7 @@ from matplotlib.figure import Figure
 from matplotlib.colors import LogNorm
 from delphes.plotutils import Hist, is_h5_hist
 from delphes.mplutils import Canvas, draw2d, draw1d
+from delphes.colors import flavor_colors
 
 def _get_args():
     d = 'default: %(default)s'
@@ -21,19 +22,28 @@ def _get_args():
     args = parser.parse_args()
     return args
 
+
+
 def run():
     args = _get_args()
-    jet_pt = []
+    hists_by_var = {
+        "jet_pt":[],
+        "n_primary_tracks":[],
+        "n_secondary_vertices":[],
+        "n_tracks_in_secondary":[]}
     with File(args.input_file, 'r') as h5:
         for flavor, plots in h5['jet_vars'].items():
-            hist = Hist(plots['jet_pt'])
-            hist.label = flavor
-            jet_pt.append(hist)
+            for var, hists in hists_by_var.items():
+                hist = Hist(plots[var])
+                hist.label = flavor
+                hist.color = flavor_colors[flavor]
+                hists.append(hist)
 
     def oname(base):
         return os.path.join(args.output_dir, base + args.ext)
-    with Canvas(oname('jetpt')) as can:
-        draw1d(can,jet_pt)
+    for var in hists_by_var:
+        with Canvas(oname(var)) as can:
+            draw1d(can,hists_by_var[var])
 
 
 if __name__ == '__main__':

@@ -108,7 +108,7 @@ def draw1d(can, hists, ylabel='entries', log=False):
     if handles:
         can.ax.legend(framealpha=0)
     if log:
-        can.ax.set_ylim(1, ax.get_ylim()[1]*2)
+        can.ax.set_ylim(1, can.ax.get_ylim()[1]*2)
         can.ax.set_yscale('log')
 
 

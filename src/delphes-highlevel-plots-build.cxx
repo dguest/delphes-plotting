@@ -45,6 +45,8 @@ struct Hists
   Histogram jetProb;
   Histogram track2d0;
   Histogram track3d0;
+  Histogram track2z0;
+  Histogram track3z0;
   Histogram n_sig_track;
   Histogram width_eta;
   Histogram width_phi;
@@ -69,6 +71,8 @@ Hists::Hists():
   jetProb({{"jetProb", BINS, -50, 0, "log"}}, flags),
   track2d0({{"track2d0sig", BINS, -2, 20, ""}}, flags),
   track3d0({{"track3d0sig", BINS, -2, 20, ""}}, flags),
+  track2z0({{"track2z0sig", BINS, -2, 20, ""}}, flags),
+  track3z0({{"track3z0sig", BINS, -2, 20, ""}}, flags),
   n_sig_track({{"n_sig_track", MAX_TRACKS + 1, -0.5, MAX_TRACKS + 0.5, ""}},
 	      flags),
   width_eta({{"width_eta", BINS, 0, 0.5, ""}}, flags),
@@ -89,6 +93,8 @@ void Hists::save(H5::CommonFG& out_h5) {
   WRITE(jetProb);
   WRITE(track2d0);
   WRITE(track3d0);
+  WRITE(track2z0);
+  WRITE(track3z0);
   WRITE(n_sig_track);
   WRITE(width_eta);
   WRITE(width_phi);
@@ -111,6 +117,8 @@ namespace {
     hists.jetProb.fill(jet.jetProb >= 0 ? std::log(jet.jetProb): -1);
     hists.track2d0.fill(jet.track2d0sig);
     hists.track3d0.fill(jet.track3d0sig);
+    hists.track2z0.fill(jet.track2z0sig);
+    hists.track3z0.fill(jet.track3z0sig);
     hists.n_sig_track.fill(jet.tracksOverIpThreshold);
     hists.width_eta.fill(jet.jetWidthEta);
     hists.width_phi.fill(jet.jetWidthPhi);

@@ -161,12 +161,13 @@ int main(int argc, char *argv[])
 {
   gROOT->SetBatch();
 
-  CLI cli;
-  if (cli.read(argc, argv)) return cli.err_code();
+  FileCLI cli(argc, argv);
 
   // Create chain of root trees
   TChain chain("Delphes");
-  chain.Add(cli.in_name.c_str());
+  for (const auto& in: cli.in_files()) {
+    chain.Add(in.c_str());
+  }
 
   // Create object of class ExRootTreeReader
   ExRootTreeReader* treeReader = new ExRootTreeReader(&chain);
@@ -202,7 +203,7 @@ int main(int argc, char *argv[])
   }   // end loop over events
   std::cout << std::endl;
 
-  H5::H5File out_file(cli.out_name, H5F_ACC_EXCL);
+  H5::H5File out_file(cli.out_file(), H5F_ACC_EXCL);
   hists.save(out_file, "all");
   flavhists.save(out_file, "high-level");
   flavhists_ml.save(out_file, "med-level");

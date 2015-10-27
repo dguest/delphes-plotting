@@ -31,7 +31,7 @@ int CLI::err_code() const {
 }
 
 void CLI::usage(std::string prname) {
-  std::cerr << "usage: " << prname << ": [-h] <input> [<output>]"
+  std::cerr << "usage: " << prname << " [-h] <input> [<output>]"
 	    << std::endl;
 }
 int CLI::read(int argc, char* argv[]) {
@@ -108,7 +108,7 @@ FileCLI::FileCLI(int nargs, char* argc[]):
 
 void FileCLI::usage() const
 {
-  std::cerr << "usage: " << m_name << ": [options] <inputs>... -o <output>\n"
+  std::cerr << "usage: " << m_name << " [options] <inputs>... -o <output>\n"
 	    << "\n"
 	    << "options:\n"
 	    << " -h, --help: print this help\n"

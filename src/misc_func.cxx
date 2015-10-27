@@ -119,12 +119,16 @@ void FileCLI::usage() const
 int FileCLI::check_opts(int argn) {
   std::string arg = m_args.at(argn);
   bool compound = arg.size() > 1 && (arg.at(0) == '-') && (arg.at(1) != '-');
+  bool is_file = true;
   if ( (arg == "--help") || (compound && strchr(arg.c_str(), 'h') ) ) {
     usage();
     exit(1);
   }
   if (compound) {
-    if (strchr(arg.c_str(), 'f')) m_overwrite = true;
+    if (strchr(arg.c_str(), 'f')) {
+      m_overwrite = true;
+      is_file = false;
+    }
   }
   if (compound && strchr(arg.c_str(), 'o')) {
     if (! (argn + 1 < m_nargs)) {
@@ -133,6 +137,8 @@ int FileCLI::check_opts(int argn) {
     m_output = m_args.at(argn + 1);
     return 2;
   }
+  // fill input files...
+  if (!is_file) return 1;
   std::string file = m_args.at(argn);
   if (!exists(file)) throw std::runtime_error(file + " doesn't exist");
   m_files.push_back(file);

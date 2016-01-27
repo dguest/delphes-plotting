@@ -19,5 +19,6 @@ labels = {
     'ntrk': r'$n$ tracks',
     'nvtx': r'$n$ vertices in jet',
     'pt': r'Jet $p_{\mathrm{T}}$',
-    'vxn': r'Vertex Number'
+    'vxn': r'Vertex Number',
+    'julian_hl': r'Julian HL',
 }

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""Make ROC curves for taggers"""
+
+_julian_help="""Julian's tpr and fpr numpy files"""
+
 import os, sys
 import numpy as np
 from h5py import File
@@ -15,12 +19,14 @@ from delphes import varnames
 def _get_args():
     d = 'default: %(default)s'
     c = 'const: %(const)s'
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('input_file')
     parser.add_argument('output_dir', nargs='?', default='highlevel')
     parser.add_argument('-e', '--ext', default='.pdf', help=d)
     parser.add_argument('-p', '--pretty', action='store_true')
     parser.add_argument('-m', '--mid-level', action='store_true')
+    parser.add_argument('-j', '--julian', nargs=2, help=_julian_help,
+                        metavar=('tpr', 'fpr'))
     args = parser.parse_args()
     return args
 
@@ -32,8 +38,8 @@ _colors = {
     'track3d0': 'green',
 }
 _labels = varnames.labels
-
-_styles = itertools.product(['-','--', ':'], 'rgbcmyk')
+_mineff = 0.3
+_styles = itertools.product(['-','--', ':'], 'rgbcmy')
 
 def run():
     args = _get_args()
@@ -61,10 +67,24 @@ def run():
 
     out_base='roc.{}'.format(args.ext.lstrip('.'))
     outname = os.path.join(out_dir, out_base)
+    if args.julian:
+        plots['julian_hl'] = ('black', '-') + _get_julian_xy(*args.julian)
     pllist = [(x, y[0], y[1], y[2], y[3]) for x, y in plots.items()]
     draw_btag_roc(sorted(pllist), outname)
 
-def _get_roc_xy(eff_ds, rej_ds, rev=False, mineff=0.3):
+
+def _get_julian_xy(tpr_file, fpr_file, mineff=_mineff):
+    """Gets numpy pickled files produced by Julian"""
+    tpr = np.load(tpr_file)
+    fpr = np.load(fpr_file)
+    valid = (tpr > mineff)
+    valid &= (fpr != 0)
+    valid &= (tpr != 1)
+    tpr = tpr[valid]
+    fpr = fpr[valid]**(-1)
+    return tpr, fpr
+
+def _get_roc_xy(eff_ds, rej_ds, rev=False, mineff=_mineff):
     sl = slice(None,None,-1) if not rev else slice(None)
     eff_array = np.asarray(eff_ds)[sl].cumsum()
     eff_array /= eff_array.max()
@@ -92,7 +112,7 @@ def draw_btag_roc(legdic, out_name):
     _setup_ax(ax)
 
     for (leg, color, style, eff, rej) in legdic:
-        opts = dict(lw=4)
+        opts = dict(lw=2)
         opts['color'] = color
         opts['linestyle'] = style
         label = _labels.get(leg, leg)
@@ -101,7 +121,7 @@ def draw_btag_roc(legdic, out_name):
     out_dir = os.path.dirname(out_name)
     if out_dir and not os.path.isdir(out_dir):
         os.mkdir(out_dir)
-    ax.legend(framealpha=0, ncol=2, prop=dict(size=8))
+    ax.legend(framealpha=0, ncol=2, prop=dict(size=8), handlelength=3)
     ax.set_ylim(1, 1e3)
     ax.set_xlabel('$b$-tagging Efficiency', x=0.98, ha='right', size=textsize)
     ax.set_ylabel('Light Jet Rejection', y=0.98, ha='right', size=textsize)

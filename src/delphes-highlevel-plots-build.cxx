@@ -1,9 +1,13 @@
+#include "parse_json.hh"
+#include "LightweightNeuralNetwork.hh"
+
 #include <iostream>
 // #include <utility>
 #include <vector>
 #include <string>
 #include <cmath>
 #include <cassert>
+#include <fstream>
 // #include <deque>
 
 #include "root.hh"
@@ -26,7 +30,7 @@
 // const double MeV = 0.001;
 
 const double pi = std::atan2(0, -1);
-
+static const char* JSON_NN_FILE = "pheno-wt.json";
 // === list of histograms ===
 
 // const double VERTEX_MASS_MAX = 10;
@@ -186,6 +190,16 @@ int main(int argc, char *argv[])
   FlavorHists flavhists;
   FlavorHists flavhists_ml;
   using namespace std;
+
+  lwt::LightweightNeuralNetwork* hl_nn = 0;
+  if (exists(JSON_NN_FILE)) {
+    std::cout << "loading nn file" << std::endl;
+    std::ifstream file(JSON_NN_FILE);
+    lwt::JSONConfig config = lwt::parse_json(file);
+    hl_nn = new lwt::LightweightNeuralNetwork(config.inputs,
+                                              config.layers,
+                                              config.outputs);
+  }
 
   // Loop over all events
   std::cout << "looping over " << numberOfEntries << " entries" << std::endl;

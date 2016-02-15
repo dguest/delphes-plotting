@@ -1,6 +1,7 @@
 #include "parse_json.hh"
 #include "misc_func.hh" 	// cli
 #include "LightweightNeuralNetwork.hh"
+#include "NanReplacer.hh"
 #include "hl_var_map.hh"
 // #include "truth_tools.hh"
 #include "root.hh"
@@ -66,6 +67,7 @@ struct Hists
 
   lwt::LightweightNeuralNetwork* lwtnn;
   Histogram julian;
+  lwt::NanReplacer* nan_rep;
 };
 
 // const float D0_RANGE = 1.0;
@@ -94,7 +96,8 @@ Hists::Hists():
   nsecvtx({{"nsecvtx", MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""}}, flags),
   efrac({{"efrc", BINS, 0, 1.00001, ""}}, flags),
   lwtnn(0),
-  julian({{"discriminant", BINS, 0, 1.00001, ""}}, flags)
+  julian({{"discriminant", BINS, 0, 1.00001, ""}}, flags),
+  nan_rep(0)
 {
 }
 
@@ -145,13 +148,12 @@ namespace {
     hists.efrac.fill(hl_svx.svEnergyFraction);
 
     if (hists.lwtnn) {
-      const auto hl_vars = hl_var_map(jet);
-      for (const auto& var: hl_vars) {
-        std::cout << var.first << " " << var.second << " ";
-      }
-      std::cout << "\n";
+      const auto hl_vars = hists.nan_rep->replace(hl_var_map(jet));
+      // for (const auto& var: hl_vars) {
+      //   std::cout << var.first << " " << var.second << " ";
+      // }
+      // std::cout << "\n";
       const auto disc = hists.lwtnn->compute(hl_vars);
-      std::cout << disc.at("out_0") << std::endl;
       hists.julian.fill(disc.at("out_0"));
     }
   }
@@ -165,7 +167,8 @@ struct FlavorHists
   void fill(const Jet& jet, bool do_ml);
   void save(H5::CommonFG& out);
   void save(H5::CommonFG& out, std::string subdir);
-  void set_nn(lwt::LightweightNeuralNetwork* network);
+  void set_nn(lwt::LightweightNeuralNetwork* network,
+              lwt::NanReplacer* replacer);
 };
 
 void FlavorHists::fill(const Jet& jet, bool do_ml) {
@@ -184,10 +187,14 @@ void FlavorHists::save(H5::CommonFG& out, std::string subdir) {
   auto subgroup = out.createGroup(subdir);
   save(subgroup);
 }
-void FlavorHists::set_nn(lwt::LightweightNeuralNetwork* network) {
+void FlavorHists::set_nn(lwt::LightweightNeuralNetwork* network,
+                         lwt::NanReplacer* rep) {
   bottom.lwtnn = network;
   charm.lwtnn = network;
   light.lwtnn = network;
+  bottom.nan_rep = rep;
+  charm.nan_rep =  rep;
+  light.nan_rep =  rep;
 }
 
 // ____________________________________________________
@@ -223,7 +230,8 @@ int main(int argc, char *argv[])
     auto* hl_nn = new lwt::LightweightNeuralNetwork(config.inputs,
                                                     config.layers,
                                                     config.outputs);
-    flavhists.set_nn(hl_nn);
+    auto* rep = new lwt::NanReplacer(config.defaults, lwt::rep::all);
+    flavhists.set_nn(hl_nn, rep);
   }
 
   // Loop over all events

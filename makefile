@@ -83,6 +83,7 @@ LIBS         += $(ROOTLIBS)
 
 # ---- define objects
 GEN_OBJ     := ExRootTreeReader.o misc_func.o truth_tools.o AllPlanes.o
+GEN_OBJ     += hl_var_map.o
 TOP_OBJ     += delphes-tracking-plots-build.o
 TOP_OBJ     += delphes-vertex-plots-build.o
 TOP_OBJ     += delphes-highlevel-plots-build.o

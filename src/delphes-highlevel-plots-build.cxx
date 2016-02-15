@@ -1,5 +1,18 @@
 #include "parse_json.hh"
+#include "misc_func.hh" 	// cli
 #include "LightweightNeuralNetwork.hh"
+#include "hl_var_map.hh"
+// #include "truth_tools.hh"
+#include "root.hh"
+
+#include "TFile.h"
+#include "TClonesArray.h"
+#include "classes/DelphesClasses.h"
+#include "ExRootTreeReader.h"
+
+#include "H5Cpp.h"
+#include "ndhist/Axis.hh"
+#include "ndhist/Histogram.hh"
 
 #include <iostream>
 // #include <utility>
@@ -10,20 +23,8 @@
 #include <fstream>
 // #include <deque>
 
-#include "root.hh"
 // #include "AllPlanes.hh"
 
-#include "TFile.h"
-#include "TClonesArray.h"
-#include "classes/DelphesClasses.h"
-#include "ExRootTreeReader.h"
-
-#include "misc_func.hh" 	// cli
-// #include "truth_tools.hh"
-
-#include "H5Cpp.h"
-#include "ndhist/Axis.hh"
-#include "ndhist/Histogram.hh"
 
 // === define constants ===
 // const double GeV = 1;
@@ -62,6 +63,9 @@ struct Hists
   Histogram mass;
   Histogram nsecvtx;
   Histogram efrac;
+
+  lwt::LightweightNeuralNetwork* lwtnn;
+  Histogram julian;
 };
 
 // const float D0_RANGE = 1.0;
@@ -88,7 +92,9 @@ Hists::Hists():
   drjet({{"drjet", BINS, 0, 10, ""}}, flags),
   mass({{"mass", BINS, 0, 10, "GeV"}}, flags),
   nsecvtx({{"nsecvtx", MAX_VERTEX + 1, -0.5, MAX_VERTEX + 0.5, ""}}, flags),
-  efrac({{"efrc", BINS, 0, 1.00001, ""}}, flags)
+  efrac({{"efrc", BINS, 0, 1.00001, ""}}, flags),
+  lwtnn(0),
+  julian({{"discriminant", BINS, 0, 1.00001, ""}}, flags)
 {
 }
 
@@ -109,6 +115,8 @@ void Hists::save(H5::CommonFG& out_h5) {
   WRITE(mass);
   WRITE(nsecvtx);
   WRITE(efrac);
+
+  if (lwtnn) WRITE(julian);
 #undef WRITE
 }
 void Hists::save(H5::CommonFG& out_file, const std::string& name) {
@@ -135,6 +143,17 @@ namespace {
     hists.mass.fill(hl_svx.svMass);
     hists.nsecvtx.fill(hl_svx.svNVertex < 0 ? 0 : hl_svx.svNVertex);
     hists.efrac.fill(hl_svx.svEnergyFraction);
+
+    if (hists.lwtnn) {
+      const auto hl_vars = hl_var_map(jet);
+      for (const auto& var: hl_vars) {
+        std::cout << var.first << " " << var.second << " ";
+      }
+      std::cout << "\n";
+      const auto disc = hists.lwtnn->compute(hl_vars);
+      std::cout << disc.at("out_0") << std::endl;
+      hists.julian.fill(disc.at("out_0"));
+    }
   }
 }
 
@@ -146,6 +165,7 @@ struct FlavorHists
   void fill(const Jet& jet, bool do_ml);
   void save(H5::CommonFG& out);
   void save(H5::CommonFG& out, std::string subdir);
+  void set_nn(lwt::LightweightNeuralNetwork* network);
 };
 
 void FlavorHists::fill(const Jet& jet, bool do_ml) {
@@ -163,6 +183,11 @@ void FlavorHists::save(H5::CommonFG& out) {
 void FlavorHists::save(H5::CommonFG& out, std::string subdir) {
   auto subgroup = out.createGroup(subdir);
   save(subgroup);
+}
+void FlavorHists::set_nn(lwt::LightweightNeuralNetwork* network) {
+  bottom.lwtnn = network;
+  charm.lwtnn = network;
+  light.lwtnn = network;
 }
 
 // ____________________________________________________
@@ -191,14 +216,14 @@ int main(int argc, char *argv[])
   FlavorHists flavhists_ml;
   using namespace std;
 
-  lwt::LightweightNeuralNetwork* hl_nn = 0;
   if (exists(JSON_NN_FILE)) {
     std::cout << "loading nn file" << std::endl;
     std::ifstream file(JSON_NN_FILE);
     lwt::JSONConfig config = lwt::parse_json(file);
-    hl_nn = new lwt::LightweightNeuralNetwork(config.inputs,
-                                              config.layers,
-                                              config.outputs);
+    auto* hl_nn = new lwt::LightweightNeuralNetwork(config.inputs,
+                                                    config.layers,
+                                                    config.outputs);
+    flavhists.set_nn(hl_nn);
   }
 
   // Loop over all events
@@ -225,7 +250,7 @@ int main(int argc, char *argv[])
   }   // end loop over events
   std::cout << std::endl;
 
-  H5::H5File out_file(cli.out_file(), H5F_ACC_EXCL);
+  H5::H5File out_file(cli.out_file(), H5F_ACC_TRUNC);
   hists.save(out_file, "all");
   flavhists.save(out_file, "high-level");
   flavhists_ml.save(out_file, "med-level");
